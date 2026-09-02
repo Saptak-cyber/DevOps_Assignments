@@ -1,0 +1,17 @@
+#==============================================================================
+# The SAME application built WITHOUT multi-stage, kept here purely for the
+# size comparison in the README. Do not use this in production.
+#==============================================================================
+FROM eclipse-temurin:21-jdk-alpine
+
+WORKDIR /app
+
+COPY src/ ./src/
+
+RUN mkdir -p classes \
+ && javac -d classes src/Main.java \
+ && jar --create --file app.jar --main-class Main -C classes .
+
+EXPOSE 8080
+
+CMD ["java", "-jar", "app.jar"]

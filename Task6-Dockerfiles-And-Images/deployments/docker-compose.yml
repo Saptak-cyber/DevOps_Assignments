@@ -1,0 +1,35 @@
+# Deploy all three applications together with a single command.
+#
+#   docker compose up -d --build     build and start everything
+#   docker compose ps                status
+#   docker compose logs -f           follow all logs
+#   docker compose down              stop and remove
+services:
+  nodejs:
+    build: ./nodejs
+    image: deploy-nodejs:latest
+    container_name: deploy-nodejs
+    ports:
+      - "3001:3000"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+
+  python:
+    build: ./python
+    image: deploy-python:latest
+    container_name: deploy-python
+    ports:
+      - "5002:5000"
+    restart: unless-stopped
+
+  java:
+    build: ./java
+    image: deploy-java:latest
+    container_name: deploy-java
+    ports:
+      - "8085:8080"
+    # Cap the container's memory so the -XX:MaxRAMPercentage flag has
+    # something meaningful to size the JVM heap against.
+    mem_limit: 512m
+    restart: unless-stopped
