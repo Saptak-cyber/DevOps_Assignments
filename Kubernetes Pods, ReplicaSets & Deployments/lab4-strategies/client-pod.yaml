@@ -1,0 +1,14 @@
+# A long-lived curl pod used to hammer Services from INSIDE the cluster.
+# In-cluster testing works on any cluster (kind, minikube, EKS) whereas
+# NodePort host access does not.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: curl-client
+  labels:
+    app: curl-client
+spec:
+  containers:
+    - name: curl
+      image: curlimages/curl:8.7.1
+      command: ["sleep", "infinity"]

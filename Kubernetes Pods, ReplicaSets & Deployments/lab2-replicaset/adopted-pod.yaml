@@ -1,0 +1,16 @@
+# A bare Pod carrying the label the ReplicaSet selects on.
+# Create this BEFORE the ReplicaSet and the RS will ADOPT it instead of
+# creating a third Pod of its own — proof that selectors, not ownership
+# at creation time, are what a controller actually reconciles against.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: orphan-with-matching-label
+  labels:
+    app: web-rs
+spec:
+  containers:
+    - name: web
+      image: nginx:1.25-alpine
+      ports:
+        - containerPort: 80

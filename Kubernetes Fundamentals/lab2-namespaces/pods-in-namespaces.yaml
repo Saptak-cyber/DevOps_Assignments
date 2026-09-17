@@ -1,0 +1,29 @@
+# Same Pod name "web" in two different namespaces — legal, because a namespace
+# is the scope for object names.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: web
+  namespace: dev
+  labels:
+    app: web
+spec:
+  containers:
+    - name: nginx
+      image: nginx:1.25-alpine
+      ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: web
+  namespace: production
+  labels:
+    app: web
+spec:
+  containers:
+    - name: nginx
+      image: nginx:1.25-alpine
+      ports:
+        - containerPort: 80

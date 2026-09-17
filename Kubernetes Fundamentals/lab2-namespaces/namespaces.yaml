@@ -1,0 +1,14 @@
+# Lab 2 — two namespaces so the same object name can exist twice in one cluster.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev
+  labels:
+    environment: dev
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: production
+  labels:
+    environment: production
