@@ -1,0 +1,52 @@
+# Written for this task. The course's app-deployment.yaml serves the default
+# nginx page, which is identical on every Pod, so it cannot show *which* backend
+# answered. These Pods each serve their own hostname, which makes the Service's
+# load balancing visible.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: echo-app
+  labels:
+    app: echo-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: echo-app
+  template:
+    metadata:
+      labels:
+        app: echo-app
+    spec:
+      containers:
+        - name: web
+          image: nginx:1.25-alpine
+          ports:
+            - containerPort: 80
+          lifecycle:
+            postStart:
+              exec:
+                command: ["sh", "-c", "echo \"POD: $(hostname)\" > /usr/share/nginx/html/index.html"]
+          resources:
+            requests:
+              cpu: "30m"
+              memory: "32Mi"
+            limits:
+              cpu: "100m"
+              memory: "64Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: echo-service
+  labels:
+    app: echo-app
+spec:
+  type: ClusterIP
+  selector:
+    app: echo-app
+  ports:
+    - name: http
+      port: 8080        # the port the Service listens on
+      targetPort: 80    # the containerPort it forwards to
+      protocol: TCP

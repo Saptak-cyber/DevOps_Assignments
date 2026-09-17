@@ -1,0 +1,70 @@
+# A runnable StatefulSet for the lab. The course reference manifest
+# (statefulset.yaml, MySQL 5.7) has no published arm64 image and ships without
+# the headless Service its `serviceName` requires, so this one demonstrates the
+# same three StatefulSet guarantees on an image that runs anywhere:
+#   1. stable ordinal names   web-0, web-1, web-2 (never a random hash)
+#   2. ordered creation       web-1 is not started until web-0 is Ready
+#   3. one PVC per Pod        kept across reschedules and deletions
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-headless
+  labels:
+    app: web-sts
+spec:
+  clusterIP: None          # headless: no VIP, DNS returns each Pod's own IP
+  selector:
+    app: web-sts
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web
+spec:
+  serviceName: web-headless   # must match the headless Service above
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web-sts
+  template:
+    metadata:
+      labels:
+        app: web-sts
+    spec:
+      terminationGracePeriodSeconds: 5
+      containers:
+        - name: web
+          image: nginx:1.25-alpine
+          ports:
+            - containerPort: 80
+          # Write the Pod's own hostname into its PVC, so we can prove the
+          # volume follows the ordinal and survives deletion.
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - sh
+                  - -c
+                  - 'echo "served by $(hostname)" > /usr/share/nginx/html/index.html'
+          volumeMounts:
+            - name: data
+              mountPath: /usr/share/nginx/html
+          resources:
+            requests:
+              cpu: "30m"
+              memory: "32Mi"
+            limits:
+              cpu: "100m"
+              memory: "64Mi"
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 128Mi

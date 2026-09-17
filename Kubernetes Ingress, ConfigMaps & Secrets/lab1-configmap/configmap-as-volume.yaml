@@ -1,0 +1,49 @@
+# Written for this task. The course manifests inject config as environment
+# variables (envFrom). The other mode is mounting a ConfigMap as a volume, and
+# the two behave differently when the ConfigMap changes: a mounted file is
+# updated in place by the kubelet, an environment variable is frozen at process
+# start. This pair demonstrates both in one Pod.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-site-config
+data:
+  # A whole config FILE as one key — the common real-world use of ConfigMaps.
+  index.html: |
+    <html><body>
+    <h1>Served from a ConfigMap volume</h1>
+    <p>version: ORIGINAL</p>
+    </body></html>
+  # A plain value, mounted as a file AND injected as an env var below.
+  GREETING: "hello from the original ConfigMap"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: config-volume-demo
+  labels:
+    app: config-volume-demo
+spec:
+  containers:
+    - name: web
+      image: nginx:1.25-alpine
+      ports:
+        - containerPort: 80
+      env:
+        # Frozen at container start. Editing the ConfigMap will NOT change this.
+        - name: GREETING_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: nginx-site-config
+              key: GREETING
+      volumeMounts:
+        # Mounted as files. The kubelet syncs changes into these.
+        - name: site
+          mountPath: /usr/share/nginx/html/index.html
+          subPath: index.html
+        - name: site
+          mountPath: /config
+  volumes:
+    - name: site
+      configMap:
+        name: nginx-site-config

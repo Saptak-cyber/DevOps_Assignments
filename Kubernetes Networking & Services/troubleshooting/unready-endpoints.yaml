@@ -1,0 +1,41 @@
+# Written for this task. The second cause of empty endpoints, and the one that
+# actually wastes afternoons: the selector is CORRECT and the Pods are Running,
+# but their readiness probe fails, so the endpoint controller refuses to list them.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unready-app
+  labels:
+    app: unready-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: unready-app
+  template:
+    metadata:
+      labels:
+        app: unready-app
+    spec:
+      containers:
+        - name: web
+          image: nginx:1.25-alpine
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /healthz-that-does-not-exist   # nginx returns 404 -> never ready
+              port: 80
+            periodSeconds: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: unready-service
+spec:
+  selector:
+    app: unready-app      # correct selector, matching Pods exist
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80

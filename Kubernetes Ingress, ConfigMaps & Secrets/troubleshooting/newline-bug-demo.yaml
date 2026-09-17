@@ -1,0 +1,64 @@
+# Written for this task, to reproduce the bug described in secret-base64-gotcha.md
+# with an observable failure instead of just a description.
+#
+# BOTH secrets are meant to hold the password "mypassword".
+# The broken one was encoded with `echo "mypassword" | base64`  -> bXlwYXNzd29yZAo=
+# The good one   was encoded with `echo -n "mypassword" | base64` -> bXlwYXNzd29yZA==
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pw-broken
+type: Opaque
+data:
+  PASSWORD: bXlwYXNzd29yZAo=      # echo "mypassword" | base64   <- trailing \n
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pw-good
+type: Opaque
+data:
+  PASSWORD: bXlwYXNzd29yZA==      # echo -n "mypassword" | base64
+---
+# A Pod that does what a database client does: compare the injected password
+# against the password it expects.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: newline-bug-demo
+spec:
+  restartPolicy: Never
+  containers:
+    - name: check
+      image: busybox:1.36
+      env:
+        - name: PW_BROKEN
+          valueFrom:
+            secretKeyRef: { name: pw-broken, key: PASSWORD }
+        - name: PW_GOOD
+          valueFrom:
+            secretKeyRef: { name: pw-good, key: PASSWORD }
+      command:
+        - sh
+        - -c
+        - |
+          EXPECTED="mypassword"
+          echo "expected length : ${#EXPECTED}"
+          echo "PW_BROKEN length: ${#PW_BROKEN}"
+          echo "PW_GOOD   length: ${#PW_GOOD}"
+          echo
+          if [ "$PW_BROKEN" = "$EXPECTED" ]; then
+            echo "pw-broken: AUTH OK"
+          else
+            echo "pw-broken: AUTH FAILED  <- password mismatch"
+          fi
+          if [ "$PW_GOOD" = "$EXPECTED" ]; then
+            echo "pw-good:   AUTH OK"
+          else
+            echo "pw-good:   AUTH FAILED"
+          fi
+          echo
+          echo "hexdump of the broken value:"
+          printf '%s' "$PW_BROKEN" | hexdump -C | head -2
+          echo "hexdump of the good value:"
+          printf '%s' "$PW_GOOD" | hexdump -C | head -2

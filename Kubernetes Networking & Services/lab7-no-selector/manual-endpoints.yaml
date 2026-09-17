@@ -1,0 +1,35 @@
+# Written for this task (session-11/service.md section 6: "Services Without Selectors").
+# A Service with NO selector does not get endpoints managed for it — you supply
+# them yourself. This is how you put an in-cluster DNS name in front of something
+# Kubernetes does not manage: a legacy VM, an on-prem database, an external IP.
+apiVersion: v1
+kind: Service
+metadata:
+  name: legacy-db
+spec:
+  # No selector at all. Nothing will ever be auto-populated here.
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+---
+# The EndpointSlice is written BY HAND and must be named after the Service
+# via the kubernetes.io/service-name label.
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: legacy-db-manual
+  labels:
+    kubernetes.io/service-name: legacy-db
+addressType: IPv4
+ports:
+  - name: http
+    port: 80
+    protocol: TCP
+endpoints:
+  # Pointed at a Pod IP here only so the lab is verifiable; in production this
+  # would be the address of the external host.
+  - addresses:
+      - "PLACEHOLDER_IP"
+    conditions:
+      ready: true

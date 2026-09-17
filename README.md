@@ -1,6 +1,6 @@
 # DevOps Class Assignments
 
-Solutions for the seven homework topics from the DevOps course, one folder per topic.
+Solutions for the eleven homework topics from the DevOps course, one folder per topic.
 Each folder contains a `README.md` with the write-up, real captured command output, and
 runnable code where applicable.
 
@@ -13,6 +13,10 @@ runnable code where applicable.
 | 5 | [Task5-Docker-Fundamentals](Task5-Docker-Fundamentals/) | Six Hello World apps: Node, Python, Java, Apache, React, Nginx | 6 apps + Dockerfiles, `build-and-run-all.sh` |
 | 6 | [Task6-Dockerfiles-And-Images](Task6-Dockerfiles-And-Images/) | Multi-stage build on port 8080 + 3 deployed applications | `multi-stage-app/`, `deployments/` |
 | 7 | [Task7-Docker-Networking](Task7-Docker-Networking/) | 3-network isolation, host network, bind mount, overlay network | 4 setup scripts |
+| 8 | [Kubernetes Fundamentals](Kubernetes%20Fundamentals/) | Cluster architecture verified live, first Pod, namespaces, kubectl tour | `kind-config.yaml`, 3 manifests, `tour.sh` |
+| 9 | [Kubernetes Pods, ReplicaSets & Deployments](Kubernetes%20Pods,%20ReplicaSets%20&%20Deployments/) | All 12 Pod lifecycle states, self-healing, rollout/rollback, 4 deployment strategies measured, DaemonSet, StatefulSet | 30+ manifests |
+| 10 | [Kubernetes Networking & Services](Kubernetes%20Networking%20&%20Services/) | The 4 ports, all 5 Service types, CoreDNS/FQDN, no-selector Services, endpoint triage | 15+ manifests |
+| 11 | [Kubernetes Ingress, ConfigMaps & Secrets](Kubernetes%20Ingress,%20ConfigMaps%20&%20Secrets/) | ConfigMap env vs volume vs subPath, Secret base64 bug reproduced, path + host routing, TLS termination | 10+ manifests |
 
 ## Verification status
 
@@ -36,6 +40,25 @@ Everything documented here was actually executed. Highlights:
   (including the expected failure); Apache run on `--network host`; bind mount edited live
   without a restart; a real single-node swarm created with an overlay network showing VIP
   vs `tasks.<service>` DNS.
+* **Kubernetes Fundamentals** — 3-node cluster built with kind (Kubernetes v1.37.0); the
+  control-plane components, the scheduler's own event trace for a Pod, and the
+  namespaced-vs-cluster-scoped split all read off the live cluster.
+* **Pods, ReplicaSets & Deployments** — all 12 lifecycle states reproduced simultaneously;
+  a ReplicaSet caught deleting a Pod it adopted; a failed rollout shown staying `Available`;
+  and each of the four deployment strategies **measured** with 100-130 requests through the
+  switch (rolling 2 failures → 0 after adding a `preStop` hook; canary split measured at
+  10.5% and 33% against 10% and 30% targets).
+* **Networking & Services** — Pod IPs shown changing while the ClusterIP held; a NodePort
+  answering on a node running no Pod; `LoadBalancer` stuck at `<pending>` with no cloud
+  controller; headless DNS returning all three Pod IPs; and the same short Service name
+  resolving differently from two namespaces.
+* **Ingress, ConfigMaps & Secrets** — ConfigMap update propagation compared across volume /
+  `subPath` / env var (only the first updates live); the trailing-newline Secret bug
+  reproduced to an actual `AUTH FAILED` with a hexdump; path and host routing plus TLS 1.3
+  termination verified end-to-end from outside the cluster.
+
+The four Kubernetes tasks share one cluster, created from
+[`Kubernetes Fundamentals/cluster/kind-config.yaml`](Kubernetes%20Fundamentals/cluster/kind-config.yaml).
 
 ## Environment
 
@@ -43,6 +66,8 @@ Everything documented here was actually executed. Highlights:
 |---|---|
 | Host | macOS (Darwin 25.5.0, arm64) |
 | Docker | Docker Desktop, engine 29.6.1 |
+| Kubernetes | kind v0.33.0, Kubernetes v1.37.0, containerd 2.3.4, 3 nodes |
+| Ingress | ingress-nginx (kind deploy manifest) |
 | Linux outputs | captured inside `ubuntu:22.04` containers |
 | Git | 2.x |
 
@@ -83,3 +108,29 @@ cd ..
 ```
 
 Each Docker task's script accepts a `clean` argument to tear its resources down.
+
+### The four Kubernetes tasks
+
+They share one cluster, so build it once:
+
+```bash
+kind create cluster --config "Kubernetes Fundamentals/cluster/kind-config.yaml"
+kubectl apply -f https://kind.sigs.k8s.io/examples/ingress/deploy-ingress-nginx.yaml
+
+# Pin the ingress controller to the node whose host ports are mapped
+kubectl patch deployment ingress-nginx-controller -n ingress-nginx --type=strategic -p '{
+  "spec": {"template": {"spec": {
+    "nodeSelector": {"kubernetes.io/os": "linux", "ingress-ready": "true"},
+    "tolerations": [
+      {"key": "node-role.kubernetes.io/control-plane", "operator": "Equal", "effect": "NoSchedule"}
+    ]}}}}'
+kubectl wait -n ingress-nginx --for=condition=ready pod \
+  -l app.kubernetes.io/component=controller --timeout=180s
+```
+
+Then work through each task's README; every lab is `kubectl apply -f <folder>` and each README
+ends with its own cleanup block. To remove everything at once:
+
+```bash
+kind delete cluster --name devops-k8s
+```
