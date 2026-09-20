@@ -1,0 +1,63 @@
+# Corrected StatefulSet for Apple Silicon (arm64).
+#
+# Two fixes over k8s-core-objects/statefulset.yml:
+#   1. image: mysql:5.7 -> mysql:8.0
+#      mysql:5.7 publishes no linux/arm64 manifest, so on an M-series Mac the
+#      kubelet fails with "no match for platform in manifest" -> ImagePullBackOff.
+#   2. Added the headless Service named "mysql".
+#      spec.serviceName in a StatefulSet references a headless Service that must
+#      actually exist for the stable per-pod DNS names
+#      (mysql-0.mysql.default.svc.cluster.local) to resolve.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  labels:
+    app: mysql
+spec:
+  clusterIP: None          # headless -> DNS returns individual Pod IPs
+  selector:
+    app: mysql
+  ports:
+    - port: 3306
+      name: mysql
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+spec:
+  serviceName: "mysql"
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.0
+          ports:
+            - containerPort: 3306
+              name: mysql
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: "password"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "100m"
+          volumeMounts:
+            - name: mysql-persistent-storage
+              mountPath: /var/lib/mysql
+  volumeClaimTemplates:
+    - metadata:
+        name: mysql-persistent-storage
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 1Gi

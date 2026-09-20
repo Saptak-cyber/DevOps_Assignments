@@ -1,0 +1,24 @@
+# ==============================================================================
+# FIXED VERSION of selector-mismatch.yaml
+# The only change: spec.template.metadata.labels.app now matches
+# spec.selector.matchLabels.app. A Deployment's selector must be a subset of
+# the pod template labels, otherwise the Deployment could never find the pods
+# it creates -- so the API server rejects the object at admission time.
+# ==============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: selector-error-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: correct-app-name
+  template:
+    metadata:
+      labels:
+        app: correct-app-name   # FIXED: was 'wrong-app-name'
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:alpine

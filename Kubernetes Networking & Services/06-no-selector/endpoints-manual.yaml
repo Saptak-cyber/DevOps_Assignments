@@ -1,0 +1,22 @@
+# Manually-authored backend addresses for legacy-backend-service.
+#
+# The object name MUST match the Service name exactly -- that is the only link
+# between the two (there is no selector to do the matching).
+#
+# In production these would be the IPs of an external database or VM. Here they
+# are two pod IPs, so the routing can actually be verified end to end.
+#
+# v1 Endpoints is deprecated in Kubernetes 1.33+; the modern equivalent is a
+# discovery.k8s.io/v1 EndpointSlice (see endpointslice-manual.yaml).
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: legacy-backend-service
+subsets:
+  - addresses:
+      - ip: 10.244.1.67
+      - ip: 10.244.1.69
+    ports:
+      - name: http
+        port: 80
+        protocol: TCP

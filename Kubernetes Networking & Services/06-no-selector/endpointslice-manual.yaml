@@ -1,0 +1,18 @@
+# Modern (non-deprecated) equivalent of endpoints-manual.yaml.
+# The link to the Service is the kubernetes.io/service-name label, NOT the name.
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: legacy-backend-service-manual
+  labels:
+    kubernetes.io/service-name: legacy-backend-service
+addressType: IPv4
+ports:
+  - name: http
+    port: 80
+    protocol: TCP
+endpoints:
+  - addresses:
+      - "10.244.1.67"
+  - addresses:
+      - "10.244.1.69"

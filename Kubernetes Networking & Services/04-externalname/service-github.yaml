@@ -1,0 +1,11 @@
+# A second ExternalName service pointing at a domain that actually resolves,
+# so the full CNAME -> A-record -> TCP path can be demonstrated end to end.
+# (The provided 04-externalname/service.yaml points at nencyravaliya.me, which
+#  currently has no A record, so the CNAME resolves but the connection fails.)
+apiVersion: v1
+kind: Service
+metadata:
+  name: github-api-service
+spec:
+  type: ExternalName
+  externalName: api.github.com

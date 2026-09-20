@@ -13,10 +13,10 @@ runnable code where applicable.
 | 5 | [Task5-Docker-Fundamentals](Task5-Docker-Fundamentals/) | Six Hello World apps: Node, Python, Java, Apache, React, Nginx | 6 apps + Dockerfiles, `build-and-run-all.sh` |
 | 6 | [Task6-Dockerfiles-And-Images](Task6-Dockerfiles-And-Images/) | Multi-stage build on port 8080 + 3 deployed applications | `multi-stage-app/`, `deployments/` |
 | 7 | [Task7-Docker-Networking](Task7-Docker-Networking/) | 3-network isolation, host network, bind mount, overlay network | 4 setup scripts |
-| 8 | [Kubernetes Fundamentals](Kubernetes%20Fundamentals/) | Cluster architecture verified live, first Pod, namespaces, kubectl tour | `kind-config.yaml`, 3 manifests, `tour.sh` |
-| 9 | [Kubernetes Pods, ReplicaSets & Deployments](Kubernetes%20Pods,%20ReplicaSets%20&%20Deployments/) | All 12 Pod lifecycle states, self-healing, rollout/rollback, 4 deployment strategies measured, DaemonSet, StatefulSet | 30+ manifests |
-| 10 | [Kubernetes Networking & Services](Kubernetes%20Networking%20&%20Services/) | The 4 ports, all 5 Service types, CoreDNS/FQDN, no-selector Services, endpoint triage | 15+ manifests |
-| 11 | [Kubernetes Ingress, ConfigMaps & Secrets](Kubernetes%20Ingress,%20ConfigMaps%20&%20Secrets/) | ConfigMap env vs volume vs subPath, Secret base64 bug reproduced, path + host routing, TLS termination | 10+ manifests |
+| 8 | [Kubernetes Fundamentals](Kubernetes%20Fundamentals/) | Minikube + kubectl install, cluster lifecycle (start/status/stop), control-plane & worker architecture | no manifests (CLI + architecture) |
+| 9 | [Kubernetes Pods, ReplicaSets & Deployments](Kubernetes%20Pods,%20ReplicaSets%20&%20Deployments/) | 14 tasks: all 12 Pod lifecycle states, ReplicaSet self-healing, StatefulSet, DaemonSet, rollout/rollback, 4 deployment strategies measured, troubleshooting drills | 45+ manifests |
+| 10 | [Kubernetes Networking & Services](Kubernetes%20Networking%20&%20Services/) | 12 tasks: the 4 ports, all 5 Service types, CoreDNS/FQDN with `ndots` cost measured, no-selector Services, Deployment vs StatefulSet identity, LB cost analysis | 25+ manifests |
+| 11 | [Kubernetes Ingress, ConfigMaps & Secrets](Kubernetes%20Ingress,%20ConfigMaps%20&%20Secrets/) | 8 tasks: ConfigMaps, Secrets and the base64 newline bug, env vs volume live-update, ingress-nginx host/path routing, TLS termination | 15+ manifests |
 
 ## Verification status
 
@@ -40,25 +40,25 @@ Everything documented here was actually executed. Highlights:
   (including the expected failure); Apache run on `--network host`; bind mount edited live
   without a restart; a real single-node swarm created with an overlay network showing VIP
   vs `tasks.<service>` DNS.
-* **Kubernetes Fundamentals** — 3-node cluster built with kind (Kubernetes v1.37.0); the
-  control-plane components, the scheduler's own event trace for a Pod, and the
-  namespaced-vs-cluster-scoped split all read off the live cluster.
-* **Pods, ReplicaSets & Deployments** — all 12 lifecycle states reproduced simultaneously;
-  a ReplicaSet caught deleting a Pod it adopted; a failed rollout shown staying `Available`;
-  and each of the four deployment strategies **measured** with 100-130 requests through the
-  switch (rolling 2 failures → 0 after adding a `preStop` hook; canary split measured at
-  10.5% and 33% against 10% and 30% targets).
-* **Networking & Services** — Pod IPs shown changing while the ClusterIP held; a NodePort
-  answering on a node running no Pod; `LoadBalancer` stuck at `<pending>` with no cloud
-  controller; headless DNS returning all three Pod IPs; and the same short Service name
-  resolving differently from two namespaces.
-* **Ingress, ConfigMaps & Secrets** — ConfigMap update propagation compared across volume /
-  `subPath` / env var (only the first updates live); the trailing-newline Secret bug
-  reproduced to an actual `AUTH FAILED` with a hexdump; path and host routing plus TLS 1.3
-  termination verified end-to-end from outside the cluster.
-
-The four Kubernetes tasks share one cluster, created from
-[`Kubernetes Fundamentals/cluster/kind-config.yaml`](Kubernetes%20Fundamentals/cluster/kind-config.yaml).
+* **Kubernetes Fundamentals** — minikube v1.39.0 installed and the full cluster lifecycle
+  captured live: `minikube version`, `start`, `status`, `kubectl get nodes -o wide`,
+  `cluster-info`, `stop`. The control-plane components in the architecture write-up are
+  cross-checked against the real `kube-system` Pods on the running cluster.
+* **Pods, ReplicaSets & Deployments** — all 12 lifecycle manifests executed; CrashLoopBackOff
+  backoff growth captured at 4s → 12s → 29s; a liveness probe restart observed; ReplicaSet
+  self-healing timed at ~1s; StatefulSet ordinal startup and PVC re-attachment verified; and
+  each deployment strategy **measured** — rolling 119/120 requests served, canary 14% at a 9:1
+  pod ratio and 27% at 7:3, Recreate producing 13 consecutive failed requests.
+* **Networking & Services** — all five Service types deployed; ClusterIP load balancing
+  confirmed from per-Pod access logs; a NodePort answered from both nodes including the one
+  running no Pod; `LoadBalancer` captured moving from `<pending>` to an external IP under
+  `minikube tunnel`; headless DNS returning all three Pod IPs; and the `ndots:5` search-domain
+  cost measured at CoreDNS as **120 queries vs 40** for 20 lookups.
+* **Ingress, ConfigMaps & Secrets** — ingress-nginx v1.15.1 enabled; ConfigMap/Secret injection
+  verified inside a running Pod; the env-var vs volume live-update difference measured across a
+  kubelet sync (env stayed `INFO`, the mounted file became `DEBUG`); Secrets shown mounted on
+  **tmpfs**; the trailing-newline base64 bug reproduced down to the `0a` byte in a hexdump; and
+  host + path routing plus TLS termination verified end to end.
 
 ## Environment
 
@@ -66,8 +66,8 @@ The four Kubernetes tasks share one cluster, created from
 |---|---|
 | Host | macOS (Darwin 25.5.0, arm64) |
 | Docker | Docker Desktop, engine 29.6.1 |
-| Kubernetes | kind v0.33.0, Kubernetes v1.37.0, containerd 2.3.4, 3 nodes |
-| Ingress | ingress-nginx (kind deploy manifest) |
+| Kubernetes | minikube v1.39.0 (docker driver), Kubernetes v1.37.0, containerd 2.3.4, 2 nodes |
+| Ingress | ingress-nginx v1.15.1 (`minikube addons enable ingress`) |
 | Linux outputs | captured inside `ubuntu:22.04` containers |
 | Git | 2.x |
 
@@ -111,26 +111,33 @@ Each Docker task's script accepts a `clean` argument to tear its resources down.
 
 ### The four Kubernetes tasks
 
-They share one cluster, so build it once:
+They share one cluster, so build it once. A second node is added on purpose — the DaemonSet
+task needs more than one node to show *one Pod per node*:
 
 ```bash
-kind create cluster --config "Kubernetes Fundamentals/cluster/kind-config.yaml"
-kubectl apply -f https://kind.sigs.k8s.io/examples/ingress/deploy-ingress-nginx.yaml
+minikube start
+minikube node add
+kubectl wait --for=condition=Ready nodes --all --timeout=180s
+```
 
-# Pin the ingress controller to the node whose host ports are mapped
-kubectl patch deployment ingress-nginx-controller -n ingress-nginx --type=strategic -p '{
-  "spec": {"template": {"spec": {
-    "nodeSelector": {"kubernetes.io/os": "linux", "ingress-ready": "true"},
-    "tolerations": [
-      {"key": "node-role.kubernetes.io/control-plane", "operator": "Equal", "effect": "NoSchedule"}
-    ]}}}}'
+Only "Kubernetes Ingress, ConfigMaps & Secrets" needs the ingress controller:
+
+```bash
+minikube addons enable ingress
 kubectl wait -n ingress-nginx --for=condition=ready pod \
-  -l app.kubernetes.io/component=controller --timeout=180s
+  -l app.kubernetes.io/component=controller --timeout=300s
 ```
 
 Then work through each task's README; every lab is `kubectl apply -f <folder>` and each README
-ends with its own cleanup block. To remove everything at once:
+ends with its own cleanup block.
+
+> **On macOS/Windows with the Docker driver, `curl $(minikube ip):<nodePort>` will time out.**
+> That is a host-to-container routing limitation, not a broken manifest — use
+> `minikube service <svc> --url` instead. Explained in full in
+> [Kubernetes Networking & Services](Kubernetes%20Networking%20&%20Services/) Task 12.
+
+To remove everything at once:
 
 ```bash
-kind delete cluster --name devops-k8s
+minikube delete
 ```

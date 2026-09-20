@@ -1,0 +1,20 @@
+# A ClusterIP Service with NO selector.
+#
+# Because there is no selector, the endpoints-controller will NOT populate this
+# Service automatically -- you supply the backend addresses yourself. This is how
+# you give an *external* system (a managed RDS instance, a legacy VM, an on-prem
+# API) a normal in-cluster DNS name, so application code can just call
+# "legacy-backend-service" and never learn whether the backend lives in the
+# cluster or outside it.
+apiVersion: v1
+kind: Service
+metadata:
+  name: legacy-backend-service
+spec:
+  type: ClusterIP
+  # NOTE: no `selector:` block at all -- this is the whole point.
+  ports:
+    - name: http
+      port: 8080        # port clients dial
+      targetPort: 80    # port on the manually-listed endpoints
+      protocol: TCP
