@@ -1,0 +1,26 @@
+# Provider plugins / modules downloaded by `terraform init`
+.terraform/
+
+# State can contain sensitive values and must never be committed
+*.tfstate
+*.tfstate.*
+
+# Saved plans and crash logs
+*.tfplan
+tfplan
+crash.log
+crash.*.log
+
+# Variable files: ignore all except the secret-free terraform.tfvars
+# that the assignment lists as a deliverable
+*.tfvars
+!terraform.tfvars
+*.auto.tfvars
+
+# Override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# .terraform.lock.hcl IS committed: it pins exact provider versions/checksums.
