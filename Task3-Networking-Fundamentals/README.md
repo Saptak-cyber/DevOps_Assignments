@@ -519,9 +519,15 @@ documented above (`ip`, `ping`, `traceroute`, `dig`/`nslookup`, `ss`/`netstat`, 
 `/etc/hosts`). To clone and follow along:
 
 ```bash
-git clone https://github.com/<org>/devops-hero.git
-cd devops-hero/networking
-bash <script-name>.sh
+git clone https://github.com/Nency-Ravaliya/devops-heros.git
+cd devops-heros/session4-networking
+cat ip.md resources.md
 ```
 
-Every command in that folder is covered in sections 1-9 with real captured output.
+The class folder is
+[`devops-heros/session4-networking`](https://github.com/Nency-Ravaliya/devops-heros/tree/main/session4-networking).
+It holds notes on IP addressing (`ip.md`: address classes, subnet masks, private ranges) and
+links to the instructor's networking repos (`resources.md`), not runnable scripts, so the
+commands were practised directly with [`network-commands.sh`](./network-commands.sh) in this folder.
+
+Every command practised is covered in sections 1-9 with real captured output.

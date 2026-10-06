@@ -23,6 +23,18 @@
 | 6 | [Host & path-based routing](#task-6-host--path-based-routing-full-demo) |
 | 7 | [TLS termination at the Ingress](#task-7-tls-termination-at-the-ingress) |
 | 8 | [Concepts & comparison tables](#task-8-concepts--comparison-tables) |
+| 9 | [Ingress vs Ingress Controller](#task-9-ingress-vs-ingress-controller) |
+| 10 | [Troubleshooting: the trailing-newline Secret incident](#task-10-troubleshooting--the-trailing-newline-secret-incident) |
+
+### Where each homework task is answered
+
+| Homework task | Answered in |
+| --- | --- |
+| Task 1: ConfigMap (create, store values, inject into Pod, verify inside container) | [Task 1](#task-1-configmaps--creation-and-inspection) + [Task 4](#task-4-consuming-config--env-vars-vs-volume-mounts) (env and volume injection, verified with `kubectl exec`) |
+| Task 2: Secret (create, store, inject, verify, why not in Git) | [Task 2](#task-2-secrets--and-why-base64-is-not-security), [Task 3](#task-3-the-base64-trailing-newline-gotcha), [Task 4](#task-4-consuming-config--env-vars-vs-volume-mounts) |
+| Task 3: Ingress (deploy app, Service, Ingress, access, verify routing) | [Task 5](#task-5-ingress-controller-setup), [Task 6](#task-6-host--path-based-routing-full-demo), [Task 7](#task-7-tls-termination-at-the-ingress) |
+| Task 4: Ingress vs Ingress Controller | [Task 9](#task-9-ingress-vs-ingress-controller) |
+| Task 5: Troubleshooting folder (identify, commands, root cause, fix, before/after) | [Task 10](#task-10-troubleshooting--the-trailing-newline-secret-incident) |
 
 ---
 
@@ -745,6 +757,305 @@ Pod 10.244.0.37:80 — plain HTTP, no certificate needed
 
 ---
 
+## Task 9: Ingress vs Ingress Controller
+
+> **Environment for Tasks 9 and 10:** a single-node **kind** cluster (Kubernetes v1.37.0) with the node's ports 80/443 mapped to `localhost:18080/18443`. The controller was installed from kind's ingress-nginx manifest (controller **v1.12.1**). This is a different cluster from the minikube one used in Tasks 1–8, so IPs and versions differ.
+
+### What is an Ingress?
+
+An **Ingress** is a Kubernetes API object (`networking.k8s.io/v1`) that holds **HTTP routing rules**: "requests for host `yatri.local` with path `/api…` go to Service `yatri-backend-service:80`". It is only configuration stored in etcd. It does not listen on any port and has no process behind it. [`04-full-demo/ingress.yaml`](./04-full-demo/ingress.yaml) is one.
+
+### What is an Ingress Controller?
+
+An **Ingress Controller** is a running program, normally a Deployment plus a Service, that **watches** Ingress objects and turns them into real proxy configuration, then serves the traffic. ingress-nginx renders the rules into an `nginx.conf`. Others include Traefik, HAProxy, Contour and the AWS Load Balancer Controller (which configures an ALB instead of running a proxy in the cluster). Unlike kube-controller-manager's controllers, **no Ingress controller ships with Kubernetes**. You install one.
+
+### Proving the difference: the same Ingress, before and after a controller exists
+
+**Before**: the app, its Services and the Ingress are applied, but no controller is installed:
+
+```
+$ kubectl apply -f 04-full-demo/configmap.yaml -f 04-full-demo/secret.yaml -f 04-full-demo/backend.yaml -f 04-full-demo/frontend.yaml
+configmap/yatri-app-config created
+secret/yatri-db-secret created
+deployment.apps/yatri-backend created
+service/yatri-backend-service created
+deployment.apps/yatri-frontend created
+service/yatri-frontend-service created
+
+$ kubectl apply -f 04-full-demo/ingress.yaml
+ingress.networking.k8s.io/yatri-ingress created
+
+$ kubectl get ingressclass
+No resources found
+
+$ kubectl get ingress yatri-ingress
+NAME            CLASS   HOSTS         ADDRESS   PORTS   AGE
+yatri-ingress   nginx   yatri.local             80      15s          <-- no ADDRESS: nobody has claimed it
+
+$ kubectl describe ingress yatri-ingress | sed -n "/^Rules/,\$p"
+Rules:
+  Host         Path  Backends
+  ----         ----  --------
+  yatri.local
+               /api(/|$)(.*)   yatri-backend-service:80 (10.244.0.47:5000,10.244.0.46:5000)
+               /               yatri-frontend-service:80 (10.244.0.49:80,10.244.0.48:80)
+Annotations:   nginx.ingress.kubernetes.io/rewrite-target: /$2
+               nginx.ingress.kubernetes.io/ssl-redirect: false
+               nginx.ingress.kubernetes.io/use-regex: true
+Events:        <none>                                                 <-- no controller ever synced it
+
+$ curl -s --max-time 5 -H "Host: yatri.local" http://localhost:18080/api; echo "curl exit code: $?"
+curl exit code: 56                                                    <-- nothing is listening on the node's port 80
+```
+
+The API server accepted the Ingress, and the backends even resolve to pod IPs, yet **no request can be served**. The rules exist, but nothing is acting on them.
+
+**Install the controller** (kind's ingress-nginx manifest):
+
+```
+$ curl -sL https://kind.sigs.k8s.io/examples/ingress/deploy-ingress-nginx.yaml -o deploy-ingress-nginx.yaml
+$ kubectl apply -f deploy-ingress-nginx.yaml | tail -4
+job.batch/ingress-nginx-admission-create created
+job.batch/ingress-nginx-admission-patch created
+ingressclass.networking.k8s.io/nginx created
+validatingwebhookconfiguration.admissionregistration.k8s.io/ingress-nginx-admission created
+
+$ kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=240s
+pod/ingress-nginx-controller-7c467b649f-qkb6f condition met
+
+$ kubectl get pods,svc -n ingress-nginx
+NAME                                            READY   STATUS      RESTARTS   AGE
+pod/ingress-nginx-admission-create-z8zgx        0/1     Completed   0          54s
+pod/ingress-nginx-admission-patch-rc8l2         0/1     Completed   0          54s
+pod/ingress-nginx-controller-7c467b649f-qkb6f   1/1     Running     0          54s
+
+NAME                                         TYPE           CLUSTER-IP     EXTERNAL-IP   PORT(S)                      AGE
+service/ingress-nginx-controller             LoadBalancer   10.96.216.43   <pending>     80:30471/TCP,443:30414/TCP   54s
+service/ingress-nginx-controller-admission   ClusterIP      10.96.4.47     <none>        443/TCP                      54s
+
+$ kubectl get ingressclass
+NAME    CONTROLLER             PARAMETERS   AGE
+nginx   k8s.io/ingress-nginx   <none>       54s
+```
+
+**After**: the **unchanged** Ingress object is picked up:
+
+```
+$ kubectl get ingress yatri-ingress
+NAME            CLASS   HOSTS         ADDRESS     PORTS   AGE
+yatri-ingress   nginx   yatri.local   localhost   80      70s        <-- controller wrote its address into status
+
+$ kubectl describe ingress yatri-ingress | sed -n "/^Rules/,\$p"
+Rules:
+  Host         Path  Backends
+  ----         ----  --------
+  yatri.local
+               /api(/|$)(.*)   yatri-backend-service:80 (10.244.0.47:5000,10.244.0.46:5000)
+               /               yatri-frontend-service:80 (10.244.0.49:80,10.244.0.48:80)
+Annotations:   nginx.ingress.kubernetes.io/rewrite-target: /$2
+               nginx.ingress.kubernetes.io/ssl-redirect: false
+               nginx.ingress.kubernetes.io/use-regex: true
+Events:
+  Type    Reason  Age                From                      Message
+  ----    ------  ----               ----                      -------
+  Normal  Sync    30s (x2 over 30s)  nginx-ingress-controller  Scheduled for sync
+
+$ curl -s -H "Host: yatri.local" http://localhost:18080/api
+Yatri Backend API
+=================
+ENVIRONMENT     : production
+LOG_LEVEL       : INFO
+DEFAULT_CURRENCY: INR
+POSTGRES_USER   : yatri_admin
+POSTGRES_DB     : yatri_production_db
+
+$ curl -s -H "Host: yatri.local" http://localhost:18080/ | grep -i "<title>"
+<title>Welcome to nginx!</title>
+
+$ curl -s -o /dev/null -w "%{http_code}\n" -H "Host: other.local" http://localhost:18080/
+404
+```
+
+**What the controller did with the Ingress.** It turned the rules into nginx configuration inside its own pod and logged that it claimed the object:
+
+```
+$ kubectl exec -n ingress-nginx deploy/ingress-nginx-controller -- grep -n -E "server_name yatri.local|location ~\* \"\^/api|set \\\$proxy_upstream_name" /etc/nginx/nginx.conf | head -6
+206:		set $proxy_upstream_name "-";
+237:			set $proxy_upstream_name "upstream-default-backend";
+335:		server_name yatri.local ;
+344:		set $proxy_upstream_name "-";
+348:		location ~* "^/api(/|$)(.*)" {
+371:			set $proxy_upstream_name "default-yatri-backend-service-80";
+
+$ kubectl logs -n ingress-nginx deploy/ingress-nginx-controller | grep -E "yatri-ingress" | head -3 | cut -c1-200
+I1006 23:35:40.598272      11 store.go:440] "Found valid IngressClass" ingress="default/yatri-ingress" ingressclass="nginx"
+I1006 23:35:40.598606      11 event.go:377] Event(v1.ObjectReference{Kind:"Ingress", Namespace:"default", Name:"yatri-ingress", UID:"95e8c8cd-a6f4-4634-acd0-f809cb9569a7", APIVersion:"networking.k8s.i
+I1006 23:35:40.702849      11 status.go:304] "updating Ingress status" namespace="default" ingress="yatri-ingress" currentValue=null newValue=[{"hostname":"localhost"}]
+```
+
+Line 335 is the `host:` rule, line 348 is the `path:` regex, and line 371 is the `backend.service`. Each Ingress field became an nginx directive. Lines 206, 237 and 344 are the controller's own defaults, including the catch-all default backend that returned the `404` above.
+
+### Difference between them
+
+| | **Ingress** | **Ingress Controller** |
+| --- | --- | --- |
+| What it is | an API object: YAML stored in etcd | a running program: Deployment + Service (+ webhook) |
+| Who writes it | the app team, one per app or host | installed once per cluster by the platform team |
+| Contains | hosts, paths, backend Services, TLS Secret names, annotations | the actual proxy (nginx / Envoy / HAProxy) and the logic that watches Ingresses |
+| Listens on a port | no | yes, 80/443 (exposed by a LoadBalancer or NodePort Service) |
+| Without the other | accepted by the API, but **no ADDRESS and serves nothing** (shown above) | runs, but every request gets the default backend **404** |
+| Linked by | `spec.ingressClassName: nginx` | `IngressClass nginx` → `controller: k8s.io/ingress-nginx` |
+| Examples | `yatri-ingress`, `campus-ingress-tls` (Task 7) | ingress-nginx, Traefik, HAProxy, Contour, AWS Load Balancer Controller, GKE Ingress |
+
+### Why both are required
+
+Kubernetes separates **what** from **how**. The Ingress says *what* routing you want in a portable, vendor-neutral format. The controller decides *how* to do it, whether with nginx in a pod, an AWS ALB or a GCP load balancer. The same `ingress.yaml` worked unchanged on minikube's addon (v1.15.1, Tasks 5–6) and on kind's manifest (v1.12.1, here). That only works because the rules and the implementation are separate objects. Without an Ingress there are no rules. Without a controller nothing enforces them, as the `ADDRESS`-less Ingress and curl exit 56 above show.
+
+**Screenshots:**
+![Ingress without a controller](./screenshots/09-ingress-no-controller.png)
+![Ingress after the controller is installed](./screenshots/09-ingress-with-controller.png)
+
+---
+
+## Task 10: Troubleshooting — the trailing-newline Secret incident
+
+The class [`troubleshooting/`](./troubleshooting/) folder contains one scenario, [`secret-base64-gotcha.md`](./troubleshooting/secret-base64-gotcha.md): *"PostgreSQL rejects the app with `password authentication failed for user "yatri_admin"`, although the developer says the password is correct."* Task 3 showed the encoding mistake on the command line. Here the full incident is reproduced on a cluster and fixed. The manifests were added to the same folder:
+
+| File | Role |
+| --- | --- |
+| [`postgres-db.yaml`](./troubleshooting/postgres-db.yaml) | PostgreSQL 16 Pod + Service; its password comes from `postgres-admin`, created correctly with `--from-literal` |
+| [`app-secret-broken.yaml`](./troubleshooting/app-secret-broken.yaml) | the app's Secret, encoded with `echo "mypassword" \| base64` → `bXlwYXNzd29yZAo=` |
+| [`app-deployment.yaml`](./troubleshooting/app-deployment.yaml) | the "app": runs `psql` against the DB every 5s with `PGPASSWORD` from that Secret |
+| [`app-secret-fixed.yaml`](./troubleshooting/app-secret-fixed.yaml) | the fix, encoded with `echo -n` → `bXlwYXNzd29yZA==` |
+
+Run from inside `troubleshooting/`:
+
+```
+$ kubectl create secret generic postgres-admin --from-literal=POSTGRES_PASSWORD=mypassword
+secret/postgres-admin created
+
+$ kubectl apply -f postgres-db.yaml
+pod/postgres created
+service/postgres created
+
+$ kubectl apply -f app-secret-broken.yaml -f app-deployment.yaml
+secret/yatri-app-db-secret created
+deployment.apps/yatri-app created
+```
+
+### 1. Identify the problem (before)
+
+```
+$ kubectl get pods
+NAME                         READY   STATUS    RESTARTS   AGE
+postgres                     1/1     Running   0          22s
+yatri-app-7bb8ddb6c7-89nbk   1/1     Running   0          13s
+
+$ kubectl logs deploy/yatri-app --tail=3
+psql: error: connection to server at "postgres" (10.96.68.107), port 5432 failed: FATAL:  password authentication failed for user "yatri_admin"
+psql: error: connection to server at "postgres" (10.96.68.107), port 5432 failed: FATAL:  password authentication failed for user "yatri_admin"
+psql: error: connection to server at "postgres" (10.96.68.107), port 5432 failed: FATAL:  password authentication failed for user "yatri_admin"
+
+$ kubectl logs postgres --tail=3
+2026-10-06 23:33:44.074 UTC [66] DETAIL:  Connection matched file "/var/lib/postgresql/data/pg_hba.conf" line 128: "host all all all scram-sha-256"
+2026-10-06 23:33:49.110 UTC [67] FATAL:  password authentication failed for user "yatri_admin"
+2026-10-06 23:33:49.110 UTC [67] DETAIL:  Connection matched file "/var/lib/postgresql/data/pg_hba.conf" line 128: "host all all all scram-sha-256"
+```
+
+Both pods are `Running` with 0 restarts, so Kubernetes sees nothing wrong. The network is fine too: the app reached `postgres` through its Service IP and got a **password** error, not a connection error. That narrows it to the credentials.
+
+### 2. Run troubleshooting commands
+
+```
+$ kubectl describe secret yatri-app-db-secret | tail -3
+Data
+====
+DB_PASSWORD:  11 bytes                     <-- "mypassword" is 10 characters
+
+$ kubectl describe secret postgres-admin | tail -3
+Data
+====
+POSTGRES_PASSWORD:  10 bytes
+
+$ kubectl get secret yatri-app-db-secret -o jsonpath="{.data.DB_PASSWORD}"; echo
+bXlwYXNzd29yZAo=
+
+$ kubectl get secret yatri-app-db-secret -o jsonpath="{.data.DB_PASSWORD}" | base64 -d | xxd
+00000000: 6d79 7061 7373 776f 7264 0a              mypassword.
+
+$ kubectl get secret postgres-admin -o jsonpath="{.data.POSTGRES_PASSWORD}" | base64 -d | xxd
+00000000: 6d79 7061 7373 776f 7264                 mypassword
+
+$ kubectl exec deploy/yatri-app -- sh -c "printf %s \"\$PGPASSWORD\" | od -c"
+0000000   m   y   p   a   s   s   w   o   r   d  \n
+0000013
+```
+
+### 3. Root cause
+
+The app's Secret holds `mypassword` **plus a `0a` byte (`\n`)**, because its YAML value was produced with `echo "mypassword" | base64` without `-n`. The kubelet decodes Secrets faithfully, so the newline reached the container's environment (`od -c` shows `\n`), and `psql` sent an 11-byte password to a database expecting 10 bytes. The `11 bytes` in `describe` is the only clue visible without decoding. Printed in a terminal, the two passwords look identical.
+
+### 4. Fix the issue
+
+```
+$ echo -n "mypassword" | base64
+bXlwYXNzd29yZA==
+
+$ kubectl apply -f app-secret-fixed.yaml
+secret/yatri-app-db-secret configured
+
+$ kubectl get secret yatri-app-db-secret -o jsonpath="{.data.DB_PASSWORD}" | base64 -d | xxd
+00000000: 6d79 7061 7373 776f 7264                 mypassword
+
+$ kubectl logs deploy/yatri-app --tail=1
+psql: error: connection to server at "postgres" (10.96.68.107), port 5432 failed: FATAL:  password authentication failed for user "yatri_admin"
+```
+
+**Fixing the Secret alone is not enough.** The pod still fails, because `PGPASSWORD` is an environment variable, read once when the container starts (the env-var snapshot measured in Task 4.3). The pods must be recreated:
+
+```
+$ kubectl rollout restart deployment/yatri-app
+deployment.apps/yatri-app restarted
+
+$ kubectl rollout status deployment/yatri-app --timeout=120s
+Waiting for deployment "yatri-app" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "yatri-app" rollout to finish: 1 old replicas are pending termination...
+deployment "yatri-app" successfully rolled out
+```
+
+### 5. After
+
+```
+$ kubectl get pods
+NAME                         READY   STATUS    RESTARTS   AGE
+postgres                     1/1     Running   0          35s
+yatri-app-85b4497cd8-wxq7q   1/1     Running   0          12s
+
+$ kubectl exec deploy/yatri-app -- sh -c "printf %s \"\$PGPASSWORD\" | od -c"
+0000000   m   y   p   a   s   s   w   o   r   d
+0000012
+
+$ kubectl logs deploy/yatri-app --tail=3
+connected as yatri_admin
+connected as yatri_admin
+connected as yatri_admin
+```
+
+| | Before | After |
+| --- | --- | --- |
+| Secret value (base64) | `bXlwYXNzd29yZAo=` | `bXlwYXNzd29yZA==` |
+| `describe` size | 11 bytes | 10 bytes |
+| Last byte in container env | `\n` (`0a`) | `d` |
+| App log | `FATAL: password authentication failed` | `connected as yatri_admin` |
+
+**Prevention:** create Secrets with `kubectl create secret generic --from-literal` or write `stringData:` in YAML, so base64 is never done by hand (Task 3). Keep real values out of Git: the YAML files here hold a throwaway lab password only so the incident can be reproduced.
+
+**Screenshots:**
+![Troubleshooting before](./screenshots/10-troubleshooting-before.png)
+![Troubleshooting after](./screenshots/10-troubleshooting-after.png)
+
+---
+
 ## Cleanup
 
 ```bash
@@ -754,6 +1065,12 @@ kubectl delete -f 05-volume-mount/config-volume-pod.yaml
 kubectl delete -f 02-secret/db-secret.yaml -f 01-configmap/app-config.yaml
 kubectl delete secret campus-tls-cert
 minikube addons disable ingress
+
+# Task 10 (run inside troubleshooting/)
+kubectl delete -f app-deployment.yaml -f app-secret-fixed.yaml -f postgres-db.yaml
+kubectl delete secret postgres-admin
+# Tasks 9-10 used a throwaway kind cluster:
+kind delete cluster --name audit
 ```
 
 ---
@@ -763,6 +1080,7 @@ minikube addons disable ingress
 | File | Why |
 | --- | --- |
 | [`05-volume-mount/config-volume-pod.yaml`](./05-volume-mount/config-volume-pod.yaml) | the class resources only showed env-var injection; this mounts the same ConfigMap and Secret as volumes so the live-update and tmpfs behaviour can be demonstrated |
+| [`troubleshooting/postgres-db.yaml`](./troubleshooting/postgres-db.yaml), [`app-secret-broken.yaml`](./troubleshooting/app-secret-broken.yaml), [`app-secret-fixed.yaml`](./troubleshooting/app-secret-fixed.yaml), [`app-deployment.yaml`](./troubleshooting/app-deployment.yaml) | Task 10: the class troubleshooting folder only had the written scenario; these reproduce it on a cluster |
 
 ---
 

@@ -9,6 +9,7 @@ Files in this folder:
 |------|---------|
 | `link-demo.sh` | Runnable script that creates, inspects and deletes soft & hard links |
 | `README.md` | This document — theory, commands and captured output |
+| `screenshots/CAPTURE-LIST.md` | Screenshots to capture for the real `adduser` and `journalctl` runs |
 
 ---
 
@@ -301,6 +302,67 @@ testraw L 09/03/2026 0 99999 7 -1                              # <-- L = locked
 > macOS, where `adduser`/`useradd` do not exist — run them inside an Ubuntu VM,
 > WSL, or `docker run -it ubuntu:22.04 bash` to reproduce and screenshot.
 
+#### Real run — test user created with `adduser` on Ubuntu 22.04
+
+Run in an `ubuntu:22.04` container (`docker run --rm --hostname ubuntu-lab ubuntu:22.04 …`). The shell there is already root, so there is no `sudo`. The password and the GECOS answers were typed in through `script`, which gives `adduser` a real terminal; the password used was a throwaway lab value:
+
+```console
+# cat /etc/os-release | head -2
+PRETTY_NAME="Ubuntu 22.04.5 LTS"
+NAME="Ubuntu"
+
+# adduser devopsuser
+Adding user `devopsuser' ...
+Adding new group `devopsuser' (1000) ...
+Adding new user `devopsuser' (1000) with group `devopsuser' ...
+Creating home directory `/home/devopsuser' ...
+Copying files from `/etc/skel' ...
+New password:
+Retype new password:
+passwd: password updated successfully
+Changing the user information for devopsuser
+Enter the new value, or press ENTER for the default
+	Full Name []: DevOps Test User
+
+
+
+
+	Room Number []: 	Work Phone []: 	Home Phone []: 	Other []: Is the information correct? [Y/n] Y
+
+# id devopsuser
+uid=1000(devopsuser) gid=1000(devopsuser) groups=1000(devopsuser)
+
+# grep devopsuser /etc/passwd
+devopsuser:x:1000:1000:DevOps Test User,,,:/home/devopsuser:/bin/bash
+
+# ls -la /home/devopsuser
+total 20
+drwxr-x--- 2 devopsuser devopsuser 4096 Oct  6 23:19 .
+drwxr-xr-x 1 root       root       4096 Oct  6 23:19 ..
+-rw-r--r-- 1 devopsuser devopsuser  220 Oct  6 23:19 .bash_logout
+-rw-r--r-- 1 devopsuser devopsuser 3771 Oct  6 23:19 .bashrc
+-rw-r--r-- 1 devopsuser devopsuser  807 Oct  6 23:19 .profile
+
+# passwd -S devopsuser
+devopsuser P 10/06/2026 0 99999 7 -1           # <-- P = usable password set
+```
+
+And bare `useradd` in the same container:
+
+```console
+# useradd testraw
+# grep testraw /etc/passwd
+testraw:x:1001:1001::/home/testraw:/bin/sh
+# ls -la /home/testraw
+ls: cannot access '/home/testraw': No such file or directory
+# passwd -S testraw
+testraw L 10/06/2026 0 99999 7 -1              # <-- L = locked, no password
+```
+
+The real run matches the expected transcript. The only differences are the UID (`1000` here, because the container had no other regular user) and the dates. One `adduser` command created the group, the home directory from `/etc/skel`, a `bash` login shell and a usable password (`P`). Bare `useradd` left a `/bin/sh` account with no home directory and a locked password (`L`). The blank lines and the run-together prompts in the GECOS section are from the scripted input, where answers arrived before the prompts were printed.
+
+**Screenshot:** ![adduser real run](./screenshots/01-adduser-real-run.png)
+
 ### 2.5 Interview answers
 
 **Q: Which do you use in a Dockerfile?** `useradd` — `adduser` is Debian-only and
@@ -446,6 +508,112 @@ Sep 03 03:20:02 ubuntu-vm systemd[1]: Failed to start A high performance web ser
 > does not exist on macOS. Reproduce in an Ubuntu VM/WSL and screenshot.
 > Note that Docker containers usually have **no systemd**, so `journalctl` will not work
 > inside `docker run ubuntu`; use a real VM, WSL2, or a cloud instance.
+
+#### Real run — `journalctl` on a systemd host
+
+A plain `docker run ubuntu` has no systemd, so this was run on a Linux machine that does boot with systemd as PID 1. That was a kind Kubernetes node container (Debian GNU/Linux 13 "trixie", `ps -p 1` → `systemd`), reached with `docker exec -it audit-control-plane bash`. Debian and Ubuntu use the same `journalctl`, so the commands and output format are identical. Long lines were cut with `| cut -c1-200` (the first system-log listing with `-c1-220`).
+
+**System logs**: the last 5 entries from every unit (here the busiest unit is the kubelet):
+
+```console
+# journalctl -n 5 --no-pager
+Oct 06 23:19:05 audit-control-plane kubelet[740]: I1006 23:19:05.779636     740 server.go:177] "Pod update broadcasted" podUID="b93d1334-33ed-4e8d-a6ce-de17cdca5090" type="MODIFIED"
+Oct 06 23:19:05 audit-control-plane kubelet[740]: I1006 23:19:05.779716     740 server.go:177] "Pod update broadcasted" podUID="3c867ee0-ec1f-448c-a9ff-d0a7df7c918c" type="MODIFIED"
+Oct 06 23:19:05 audit-control-plane kubelet[740]: I1006 23:19:05.787164     740 pod_startup_latency_tracker.go:144] "Observed pod startup duration" pod="kube-system/coredns-559f6c778d-kqv7h" podStartSLOduration=12.787152
+Oct 06 23:19:06 audit-control-plane kubelet[740]: I1006 23:19:06.785806     740 server.go:177] "Pod update broadcasted" podUID="3c867ee0-ec1f-448c-a9ff-d0a7df7c918c" type="MODIFIED"
+Oct 06 23:19:06 audit-control-plane kubelet[740]: I1006 23:19:06.785999     740 server.go:177] "Pod update broadcasted" podUID="b93d1334-33ed-4e8d-a6ce-de17cdca5090" type="MODIFIED"
+
+# journalctl --list-boots --no-pager | tail -3
+IDX BOOT ID                          FIRST ENTRY                 LAST ENTRY
+  0 112ea29fbb5f4f50832a72c61d91f059 Tue 2026-10-06 23:18:39 UTC Tue 2026-10-06 23:19:33 UTC
+
+# journalctl -b -p err --no-pager | tail -5
+-- No entries --
+
+# journalctl -k -n 3 --no-pager
+-- No entries --
+
+# journalctl --disk-usage
+Archived and active journals take up 8M in the file system.
+```
+
+`-p err` and `-k` are empty here. This boot had no error-level messages, and kernel messages belong to the Docker Desktop VM's kernel rather than this container's journal.
+
+**Logs for a specific service**: a real system service (`containerd`), then a service started for the demo:
+
+```console
+# journalctl -u containerd -n 5 --no-pager -o short-iso
+2026-10-06T23:19:05+00:00 audit-control-plane containerd[130]: time="2026-10-06T23:19:05.405903169Z" level=info msg="StartContainer for \"6a6249c3b07293fd0e60eb0caa8f5aef8aa99625ff61ff0bb0fd2669279e48
+2026-10-06T23:19:05+00:00 audit-control-plane containerd[130]: time="2026-10-06T23:19:05.406446044Z" level=info msg="connecting to shim 6a6249c3b07293fd0e60eb0caa8f5aef8aa99625ff61ff0bb0fd2669279e481f
+2026-10-06T23:19:05+00:00 audit-control-plane containerd[130]: time="2026-10-06T23:19:05.428438710Z" level=info msg="StartContainer for \"1ec4004d4e1ab0538649121ca1f71f2fd94e29d77c8a93c5a1714dda01ca74
+2026-10-06T23:19:05+00:00 audit-control-plane containerd[130]: time="2026-10-06T23:19:05.433494335Z" level=info msg="StartContainer for \"aaaef2501259bdbe1346f763079659a734bb591f0c0fcd966178c001ab8ee9
+2026-10-06T23:19:05+00:00 audit-control-plane containerd[130]: time="2026-10-06T23:19:05.451606835Z" level=info msg="StartContainer for \"6a6249c3b07293fd0e60eb0caa8f5aef8aa99625ff61ff0bb0fd2669279e48
+
+# systemd-run --unit=demo-app /bin/sh -c "echo demo-app starting; sleep 1; echo demo-app listening on :8080; sleep 600"
+Running as unit: demo-app.service; invocation ID: a193253a55df404d8ad94bba3a7a0660
+
+# systemctl status demo-app --no-pager | head -8
+● demo-app.service - [systemd-run] /bin/sh -c "echo demo-app starting; sleep 1; echo demo-app listening on :8080; sleep 600"
+     Loaded: loaded (/run/systemd/transient/demo-app.service; transient)
+  Transient: yes
+     Active: active (running) since Tue 2026-10-06 23:19:30 UTC; 3s ago
+ Invocation: a193253a55df404d8ad94bba3a7a0660
+   Main PID: 1648 (sh)
+      Tasks: 2 (limit: 9520)
+     Memory: 352K (peak: 1.7M)
+
+# journalctl -u demo-app --no-pager
+Oct 06 23:19:30 audit-control-plane systemd[1]: Started demo-app.service - [systemd-run] /bin/sh -c "echo demo-app starting; sleep 1; echo demo-app listening on :8080; sleep 600".
+Oct 06 23:19:30 audit-control-plane sh[1648]: demo-app starting
+Oct 06 23:19:31 audit-control-plane sh[1648]: demo-app listening on :8080
+```
+
+Whatever a service writes to stdout ends up in the journal, tagged with its unit. `-u demo-app` filters to exactly those lines, which is the everyday use of `journalctl`.
+
+**A failing service and `journalctl -xeu`**: the same debugging loop as the nginx example above, for real:
+
+```console
+# systemd-run --unit=broken-app /bin/sh -c "echo broken-app: reading /etc/broken-app.conf; cat /etc/broken-app.conf"
+Running as unit: broken-app.service; invocation ID: 29dedd85991b4f0aa453d3b2e18a00a3
+
+# systemctl status broken-app --no-pager | head -6
+× broken-app.service - [systemd-run] /bin/sh -c "echo broken-app: reading /etc/broken-app.conf; cat /etc/broken-app.conf"
+     Loaded: loaded (/run/systemd/transient/broken-app.service; transient)
+  Transient: yes
+     Active: failed (Result: exit-code) since Tue 2026-10-06 23:19:33 UTC; 1s ago
+   Duration: 33ms
+ Invocation: 29dedd85991b4f0aa453d3b2e18a00a3
+
+# journalctl -xeu broken-app --no-pager
+Oct 06 23:19:33 audit-control-plane systemd[1]: Started broken-app.service - [systemd-run] /bin/sh -c "echo broken-app: reading /etc/broken-app.conf; cat /etc/broken-app.conf".
+░░ Subject: A start job for unit broken-app.service has finished successfully
+░░ Defined-By: systemd
+░░ Support: https://www.debian.org/support
+░░
+░░ A start job for unit broken-app.service has finished successfully.
+░░
+░░ The job identifier is 498.
+Oct 06 23:19:33 audit-control-plane sh[1662]: broken-app: reading /etc/broken-app.conf
+Oct 06 23:19:33 audit-control-plane sh[1664]: cat: /etc/broken-app.conf: No such file or directory
+Oct 06 23:19:33 audit-control-plane systemd[1]: broken-app.service: Main process exited, code=exited, status=1/FAILURE
+░░ Subject: Unit process exited
+░░ Defined-By: systemd
+░░ Support: https://www.debian.org/support
+░░
+░░ An ExecStart= process belonging to unit broken-app.service has exited.
+░░
+░░ The process' exit code is 'exited' and its exit status is 1.
+Oct 06 23:19:33 audit-control-plane systemd[1]: broken-app.service: Failed with result 'exit-code'.
+░░ Subject: Unit failed
+░░ Defined-By: systemd
+░░ Support: https://www.debian.org/support
+░░
+░░ The unit broken-app.service has entered the 'failed' state with result 'exit-code'.
+```
+
+`systemctl status` only says *that* it failed (`status=1/FAILURE`). The journal says *why*: `cat: /etc/broken-app.conf: No such file or directory`. The `░░` lines are the explanatory catalog text that `-x` adds. `-e` jumps to the end and `-u` filters to the unit.
+
+**Screenshot:** ![journalctl real run](./screenshots/01-journalctl-real-run.png)
 
 ### 3.4 Why journalctl over `/var/log/syslog`
 

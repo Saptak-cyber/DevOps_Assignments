@@ -1,0 +1,31 @@
+# The "application": connects to postgres every 5s using the password from the app Secret.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yatri-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: yatri-app
+  template:
+    metadata:
+      labels:
+        app: yatri-app
+    spec:
+      containers:
+        - name: app
+          image: postgres:16-alpine
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              while true; do
+                psql "host=postgres user=yatri_admin dbname=yatri_production_db" -tAc "select 'connected as ' || current_user" 2>&1
+                sleep 5
+              done
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: yatri-app-db-secret
+                  key: DB_PASSWORD

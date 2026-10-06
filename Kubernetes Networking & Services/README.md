@@ -27,6 +27,16 @@
 | 10 | [Deployment vs StatefulSet vs DaemonSet matrix](#task-10-master-architectural-matrix) |
 | 11 | [Cost optimisation & service selection tree](#task-11-production-cost-optimisation--service-selection-decision-tree) |
 | 12 | [Minikube docker-driver gotcha](#task-12-minikube-docker-driver-port-binding--tunnel-gotcha) |
+| 13 | [Kubernetes object comparison](#task-13-kubernetes-object-comparison) |
+
+### Where each homework task is answered
+
+| Homework task | Answered in |
+| --- | --- |
+| Task 1: all 5 Service types (YAML, deploy, verify, test, output) | Tasks 2–6 below (ClusterIP, NodePort, LoadBalancer, ExternalName, Headless), YAML in `01-clusterip/` … `05-headless/` |
+| Task 2: Kubernetes object comparison | [Task 13](#task-13-kubernetes-object-comparison) (Deployment vs ReplicaSet, ReplicaSet vs Service) and [Task 10](#task-10-master-architectural-matrix) (Deployment vs DaemonSet vs StatefulSet) |
+| Task 3: FQDN | [`fqdn/README.md`](./fqdn/README.md) |
+| Task 4: CoreDNS | [`coredns/README.md`](./coredns/README.md) |
 
 ---
 
@@ -1051,12 +1061,229 @@ web-service-loadbalancer   LoadBalancer   10.109.138.241   127.0.0.1     80:3160
 
 ---
 
+## Task 13: Kubernetes Object Comparison
+
+**Directory:** [`comparison/`](./comparison/). It holds a Deployment and a bare ReplicaSet with the same nginx template, so the two can be compared directly. Commands are run from inside that folder.
+
+> **Environment for this task:** captured on a single-node **kind** cluster (Kubernetes v1.37.0), not the minikube cluster above. Pod names and IPs therefore differ from Tasks 1–12.
+
+### 13.1 — Deployment vs ReplicaSet
+
+```
+$ kubectl apply -f web-deploy.yaml -f web-rs.yaml
+deployment.apps/web-deploy created
+replicaset.apps/web-rs created
+
+$ kubectl get deploy,rs,pods -l "app in (web-deploy,web-rs)"
+NAME                                   DESIRED   CURRENT   READY   AGE
+replicaset.apps/web-deploy-b68785c99   2         2         2       21s
+
+NAME                             READY   STATUS    RESTARTS   AGE
+pod/web-deploy-b68785c99-v5q28   1/1     Running   0          21s
+pod/web-deploy-b68785c99-vsjq5   1/1     Running   0          21s
+pod/web-rs-4qfxl                 1/1     Running   0          21s
+pod/web-rs-7d8wq                 1/1     Running   0          21s
+```
+
+The label query matched the **ReplicaSet that the Deployment created** (`web-deploy-b68785c99`), because it copies the pod template's labels. It did not match the Deployment or the hand-written `web-rs` object, since neither has labels of its own. The ownership chain shows the relationship directly:
+
+```
+$ kubectl get rs -l app=web-deploy -o jsonpath="{.items[0].metadata.ownerReferences[0].kind}/{.items[0].metadata.ownerReferences[0].name}{\"\n\"}"
+Deployment/web-deploy
+
+$ kubectl get pods -l app=web-deploy -o jsonpath="{range .items[*]}{.metadata.name} -> {.metadata.ownerReferences[0].kind}/{.metadata.ownerReferences[0].name}{\"\n\"}{end}"
+web-deploy-b68785c99-v5q28 -> ReplicaSet/web-deploy-b68785c99
+web-deploy-b68785c99-vsjq5 -> ReplicaSet/web-deploy-b68785c99
+
+$ kubectl get pods -l app=web-rs -o jsonpath="{range .items[*]}{.metadata.name} -> {.metadata.ownerReferences[0].kind}/{.metadata.ownerReferences[0].name}{\"\n\"}{end}"
+web-rs-4qfxl -> ReplicaSet/web-rs
+web-rs-7d8wq -> ReplicaSet/web-rs
+```
+
+**Deployment → ReplicaSet → Pod.** A Deployment never owns pods directly.
+
+**Now change the image on both:**
+
+```
+$ kubectl set image deployment/web-deploy nginx=nginx:1.28-alpine
+deployment.apps/web-deploy image updated
+$ kubectl set image replicaset/web-rs nginx=nginx:1.28-alpine
+replicaset.apps/web-rs image updated
+
+$ kubectl rollout status deploy/web-deploy --timeout=120s
+...
+deployment "web-deploy" successfully rolled out
+
+$ kubectl get rs -l "app in (web-deploy,web-rs)" -o wide
+NAME                   DESIRED   CURRENT   READY   AGE   CONTAINERS   IMAGES              SELECTOR
+web-deploy-8c865877b   2         2         2       14s   nginx        nginx:1.28-alpine   app=web-deploy,pod-template-hash=8c865877b
+web-deploy-b68785c99   0         0         0       35s   nginx        nginx:1.27-alpine   app=web-deploy,pod-template-hash=b68785c99
+
+$ kubectl get pods -l "app in (web-deploy,web-rs)" -o custom-columns=POD:.metadata.name,IMAGE:.spec.containers[0].image
+POD                          IMAGE
+web-deploy-8c865877b-dgftq   nginx:1.28-alpine
+web-deploy-8c865877b-lspq6   nginx:1.28-alpine
+web-rs-4qfxl                 nginx:1.27-alpine        <-- template changed, running pods did not
+web-rs-7d8wq                 nginx:1.27-alpine
+
+$ kubectl rollout status rs/web-rs
+error: no status viewer has been implemented for ReplicaSet.apps
+```
+
+The Deployment created a **new** ReplicaSet (`8c865877b`), scaled it up, scaled the old one down to 0, and kept the old one for rollback. The bare ReplicaSet accepted the new template but **did not touch its running pods**. It only compares pod *count*, not pod *spec*. The new image appears only when a pod is replaced:
+
+```
+$ kubectl delete pod $(kubectl get pods -l app=web-rs -o jsonpath="{.items[0].metadata.name}")
+pod "web-rs-4qfxl" deleted from default namespace
+
+$ kubectl get pods -l app=web-rs -o custom-columns=POD:.metadata.name,IMAGE:.spec.containers[0].image
+POD            IMAGE
+web-rs-7d8wq   nginx:1.27-alpine
+web-rs-c9cdg   nginx:1.28-alpine         <-- two versions running at once, nothing coordinating it
+```
+
+**Scaling and rollback:**
+
+```
+$ kubectl scale deployment/web-deploy --replicas=4
+deployment.apps/web-deploy scaled
+
+$ kubectl get deploy web-deploy; kubectl get rs -l app=web-deploy
+NAME         READY   UP-TO-DATE   AVAILABLE   AGE
+web-deploy   4/4     4            4           46s
+NAME                   DESIRED   CURRENT   READY   AGE
+web-deploy-8c865877b   4         4         4       25s
+web-deploy-b68785c99   0         0         0       46s
+
+$ kubectl rollout history deployment/web-deploy
+deployment.apps/web-deploy
+REVISION  CHANGE-CAUSE
+1         <none>
+2         <none>
+
+$ kubectl rollout undo deployment/web-deploy
+deployment.apps/web-deploy rolled back
+
+$ kubectl get rs -l app=web-deploy -o wide
+NAME                   DESIRED   CURRENT   READY   AGE   CONTAINERS   IMAGES              SELECTOR
+web-deploy-8c865877b   0         0         0       26s   nginx        nginx:1.28-alpine   app=web-deploy,pod-template-hash=8c865877b
+web-deploy-b68785c99   4         4         4       47s   nginx        nginx:1.27-alpine   app=web-deploy,pod-template-hash=b68785c99
+```
+
+Rollback just scaled the old ReplicaSet back up. Revision history **is** the list of old ReplicaSets.
+
+| | **Deployment** | **ReplicaSet** |
+| --- | --- | --- |
+| Purpose | declarative updates for stateless apps | keep N identical pods running |
+| Pod management | indirect, through ReplicaSets it creates and names `<deploy>-<template-hash>` | direct, owns the pods (`ownerReferences`) |
+| Scaling | `kubectl scale deploy`; passes the count to the current RS | `kubectl scale rs`; creates/deletes pods to match |
+| Rolling updates | **yes**: new RS up, old RS down, `maxSurge`/`maxUnavailable`, `rollout status/history/undo` | **no**: template change affects only future pods; `rollout` is not supported |
+| Rollback | `kubectl rollout undo` (scales an old RS back up) | none |
+| When to use | almost always | almost never directly; let a Deployment manage it |
+
+**Relationship:** a Deployment is a controller *of ReplicaSets*. It keeps one ReplicaSet per pod-template version (the `pod-template-hash` label), and the ReplicaSet does the actual work of keeping the pod count right. Rolling updates in Session 10 Task 8 are this same mechanism.
+
+### 13.2 — Deployment vs DaemonSet vs StatefulSet
+
+The full matrix is in [Task 10](#task-10-master-architectural-matrix), backed by the kill tests in Task 9. Summary of the six dimensions the homework asks for:
+
+| | Deployment | DaemonSet | StatefulSet |
+| --- | --- | --- | --- |
+| **Use cases** | stateless web/API servers, workers | one agent per node: log shippers, metrics exporters, CNI, kube-proxy | databases, brokers, consensus stores |
+| **Pod creation** | all at once, random names (`yatri-backend-dc5888c55-2v8zg`) | exactly one per (matching) node, no `replicas` field | one at a time in order `0 → 1 → 2`, stable names (`web-stateful-0`) |
+| **Scaling** | change `replicas` | add or remove nodes (or change the node selector) | change `replicas`; scale-down removes the highest ordinal first |
+| **Networking** | one ClusterIP Service in front; pods are interchangeable | often no Service, or `hostNetwork`/`hostPort` to reach the node agent; scraped per node | needs a **headless** Service; each pod gets its own DNS name `web-stateful-0.web-service-headless...` (Task 6) |
+| **Storage** | shared PVC or none; pods hold no identity on disk | usually `hostPath`, the node's own disk | `volumeClaimTemplates`: one PVC per pod, re-attached to the same ordinal after a restart |
+| **Examples** | nginx frontend, `yatri-backend` | `kube-proxy`, `kindnet`, Fluent Bit, node-exporter | MySQL, PostgreSQL, Kafka, etcd |
+
+### 13.3 — ReplicaSet vs Service
+
+`web-rs` (2 pods) and a client pod (`kubectl run client --image=curlimages/curl:8.11.1 --command -- sleep 3600`):
+
+```
+$ kubectl get pods -l app=web-rs -o wide
+NAME           READY   STATUS    RESTARTS   AGE   IP            NODE                  NOMINATED NODE   READINESS GATES
+web-rs-7d8wq   1/1     Running   0          66s   10.244.0.25   audit-control-plane   <none>           <none>
+web-rs-c9cdg   1/1     Running   0          30s   10.244.0.28   audit-control-plane   <none>           <none>
+
+$ kubectl exec client -- curl -s --max-time 5 http://web-rs; echo "curl exit code: $?"
+command terminated with exit code 6
+curl exit code: 6                        <-- a ReplicaSet gives you pods, not a name or an address
+```
+
+```
+$ kubectl expose replicaset web-rs --name=web-rs-svc --port=80 --target-port=80
+service/web-rs-svc exposed
+
+$ kubectl get svc web-rs-svc
+NAME         TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)   AGE
+web-rs-svc   ClusterIP   10.96.68.154   <none>        80/TCP    3s
+
+$ kubectl get endpointslices -l kubernetes.io/service-name=web-rs-svc
+NAME               ADDRESSTYPE   PORTS   ENDPOINTS                 AGE
+web-rs-svc-lljdf   IPv4          80      10.244.0.25,10.244.0.28   3s
+
+$ kubectl exec client -- curl -s -o /dev/null -w "%{http_code} via %{remote_ip}\n" http://web-rs-svc
+200 via 10.96.68.154
+```
+
+**Kill a pod.** The ReplicaSet replaces it with a new IP, and the Service follows without any change:
+
+```
+$ kubectl delete pod $(kubectl get pods -l app=web-rs -o jsonpath="{.items[0].metadata.name}")
+pod "web-rs-7d8wq" deleted from default namespace
+
+$ kubectl get pods -l app=web-rs -o wide
+NAME           READY   STATUS    RESTARTS   AGE   IP            NODE                  NOMINATED NODE   READINESS GATES
+web-rs-c9cdg   1/1     Running   0          40s   10.244.0.28   audit-control-plane   <none>           <none>
+web-rs-ptbn6   1/1     Running   0          6s    10.244.0.36   audit-control-plane   <none>           <none>
+
+$ kubectl get endpointslices -l kubernetes.io/service-name=web-rs-svc
+NAME               ADDRESSTYPE   PORTS   ENDPOINTS                 AGE
+web-rs-svc-lljdf   IPv4          80      10.244.0.28,10.244.0.36   9s
+
+$ kubectl exec client -- curl -s -o /dev/null -w "%{http_code} via %{remote_ip}\n" http://web-rs-svc
+200 via 10.96.68.154                     <-- same address the whole time
+```
+
+| | **ReplicaSet** | **Service** |
+| --- | --- | --- |
+| Responsibility | **how many** pods exist: create and replace pods to match `replicas` | **how to reach** them: a stable virtual IP + DNS name in front of matching pods |
+| Layer | workload / compute | networking |
+| Knows about | its own pods (owner references) | any ready pods whose labels match its selector, from any controller |
+| On pod death | creates a new pod (new name, **new IP**) | drops the old IP from its EndpointSlice and adds the new one |
+| Load balancing | none | yes, kube-proxy spreads connections across endpoints (Task 2 per-pod counts) |
+
+**Why a Service is required:** pod IPs are temporary (`10.244.0.25` is gone, `10.244.0.36` replaced it), there is no name for a set of pods, and nothing spreads traffic across replicas. Without a Service every client would have to watch the API for pod IPs itself.
+
+**How traffic reaches the pods:**
+
+```
+client pod: curl http://web-rs-svc
+  │ 1. CoreDNS: web-rs-svc.default.svc.cluster.local -> 10.96.68.154 (ClusterIP)
+  ▼
+node kernel: kube-proxy iptables rules for 10.96.68.154:80
+  │ 2. DNAT to one ready endpoint, picked at random per connection
+  ▼
+10.244.0.28:80 or 10.244.0.36:80        <-- from the EndpointSlice, kept current by the
+                                            EndpointSlice controller as the ReplicaSet replaces pods
+```
+
+They connect only through **labels**. The ReplicaSet stamps `app=web-rs` on the pods it creates, and the Service selects `app=web-rs`. Neither object refers to the other.
+
+**Screenshots:**
+![Deployment vs ReplicaSet](./screenshots/13-deployment-vs-replicaset.png)
+![ReplicaSet vs Service](./screenshots/13-replicaset-vs-service.png)
+
+---
+
 ## Cleanup
 
 ```bash
 kubectl delete -f 01-clusterip/ -f 02-nodeport/ -f 03-loadbalancer/ -f 04-externalname/ -f 05-headless/ -f 06-no-selector/
 kubectl delete -f troubleshooting/empty-endpoints.yaml
 kubectl delete -f deployment/backend-deployment.yaml
+kubectl delete -f comparison/ && kubectl delete svc web-rs-svc && kubectl delete pod client     # Task 13
 ```
 
 ---
@@ -1069,6 +1296,9 @@ kubectl delete -f deployment/backend-deployment.yaml
 | [`06-no-selector/endpoints-manual.yaml`](./06-no-selector/endpoints-manual.yaml) | hand-written `v1/Endpoints` |
 | [`06-no-selector/endpointslice-manual.yaml`](./06-no-selector/endpointslice-manual.yaml) | modern `EndpointSlice` equivalent |
 | [`04-externalname/service-github.yaml`](./04-externalname/service-github.yaml) | the provided ExternalName targets a domain with no A record; this one resolves, so the full CNAME → A → TCP path is demonstrable |
+| [`comparison/web-deploy.yaml`](./comparison/web-deploy.yaml), [`comparison/web-rs.yaml`](./comparison/web-rs.yaml) | Task 13: same template as a Deployment and as a bare ReplicaSet |
+| [`fqdn/README.md`](./fqdn/README.md) | homework Task 3 deliverable |
+| [`coredns/README.md`](./coredns/README.md) | homework Task 4 deliverable |
 
 ---
 
@@ -1076,6 +1306,8 @@ kubectl delete -f deployment/backend-deployment.yaml
 
 - [`service.md`](./service.md) — the 5 service types, kube-proxy internals, interview Q&A
 - [`fqdn.md`](./fqdn.md) — CoreDNS and FQDN deep dive
+- [`fqdn/README.md`](./fqdn/README.md) — FQDN write-up (homework Task 3)
+- [`coredns/README.md`](./coredns/README.md) — CoreDNS write-up (homework Task 4)
 
 ## Resources
 
