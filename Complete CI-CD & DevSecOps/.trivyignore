@@ -1,0 +1,4 @@
+# Trivy ignore file (read automatically from the working directory).
+# Intentionally empty: no CVE is currently accepted as a risk.
+# To accept one, add a line like the following WITH a reason and review date:
+#   CVE-2099-0000  # reason: not reachable (feature disabled); owner: saptak; review-by: 2026-12-31

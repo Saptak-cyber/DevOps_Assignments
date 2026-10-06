@@ -1,0 +1,33 @@
+# Security gate thresholds for the Session 17 pipeline.
+# Read by security/security_gate.py in the "Security Gate" job.
+# A value of N means "at most N findings of this kind"; -1 means "report only, never block".
+# Any report that is missing or unreadable fails the gate (fail-closed).
+
+[bandit]            # SAST: Python AST checks (config: .bandit.yml)
+max_high = 0
+max_medium = 0
+max_low = -1        # B311 'random' in the greeting/pipeline-simulator endpoints is not security-relevant
+
+[semgrep]           # SAST: registry rule packs p/python, p/flask, p/dockerfile
+max_high = 0        # semgrep ERROR
+max_medium = 0      # semgrep WARNING
+max_low = -1        # semgrep INFO
+
+[pip_audit]         # SCA: PyPI advisory DB (OSV/PyPA) against requirements-dev.txt
+max_vulns = 0
+ignore_ids = []     # add an advisory ID here only with a written justification + expiry
+
+[trivy_fs]          # SCA: Trivy on requirements*.txt (NVD/GHSA severities)
+max_critical = 0
+max_high = 0
+max_critical_unfixed = 0
+max_high_unfixed = -1
+
+[gitleaks]          # Secret scan (config: .gitleaks.toml)
+max_findings = 0
+
+[trivy_image]       # Container image scan: OS packages + Python site-packages
+max_critical = 0          # fixable CRITICAL -> block
+max_high = 0              # fixable HIGH     -> block
+max_critical_unfixed = 0  # CRITICAL with no upstream fix still blocks
+max_high_unfixed = -1     # HIGH with no Debian fix yet: reported, not blocking (nothing to upgrade to)

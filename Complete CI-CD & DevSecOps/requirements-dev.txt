@@ -1,0 +1,4 @@
+-r requirements.txt
+# pytest 8.4.2 (instructor's pin) is affected by PYSEC-2026-1845 / CVE-2025-71176 — fixed in 9.0.3.
+pytest==9.1.1
+pytest-cov==7.1.0

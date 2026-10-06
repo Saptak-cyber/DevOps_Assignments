@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+coverage.xml
+reports/
+dist/
+rendered/
+.venv/
+venv/
+.DS_Store

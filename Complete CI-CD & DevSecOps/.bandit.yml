@@ -1,0 +1,8 @@
+# Bandit configuration (SAST). Used as: bandit -c .bandit.yml -r app
+# Tests use assert and fixtures on purpose, so they are excluded from scanning.
+exclude_dirs:
+  - tests
+  - .venv
+# No tests are skipped globally: suppressions, if ever needed, must be
+# per-line '# nosec BXXX' with a reason, so they stay visible in review.
+skips: []

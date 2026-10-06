@@ -1,0 +1,10 @@
+# Runtime dependencies — fully pinned (direct + transitive) so SCA tools
+# (pip-audit, Trivy) see exactly what ships in the container image.
+Flask==3.1.3
+gunicorn==26.2.0
+Werkzeug==3.1.9
+Jinja2==3.1.6
+MarkupSafe==3.0.4
+itsdangerous==2.2.0
+click==8.5.0
+blinker==1.9.0
