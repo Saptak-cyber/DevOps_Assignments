@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>${project_name}</title>
+</head>
+<body>
+  <h1>${project_name}</h1>
+  <p>SST DevOps &amp; Cloud - Session 19: Cloud &amp; Terraform in Action (Saptak Banerjee)</p>
+  <ul>
+    <li>Served by: nginx on EC2 instance __INSTANCE_ID__ in __AZ__</li>
+    <li>Region: ${region}</li>
+    <li>VPC: ${vpc_cidr} / public subnet ${subnet_cidr}</li>
+    <li>Page source: s3://${bucket_name}/site/index.html (private bucket, read via instance role)</li>
+    <li>Provisioned by: Terraform</li>
+  </ul>
+</body>
+</html>

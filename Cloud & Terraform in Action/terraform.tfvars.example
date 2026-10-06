@@ -1,0 +1,14 @@
+# Copy to terraform.tfvars and adjust. Never put AWS keys in this file.
+aws_region         = "ap-south-1"
+project_name       = "sst-s19-cloud-tf"
+vpc_cidr           = "10.20.0.0/16"
+public_subnet_cidr = "10.20.1.0/24"
+az_suffix          = "a"
+instance_type      = "t2.micro"
+
+common_tags = {
+  Project   = "sst-devops-homework"
+  ManagedBy = "Terraform"
+  Session   = "19"
+  Owner     = "saptak-banerjee"
+}

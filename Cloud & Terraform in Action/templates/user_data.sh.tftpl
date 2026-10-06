@@ -1,0 +1,33 @@
+#!/bin/bash
+# Rendered by Terraform's templatefile(); runs once as root via cloud-init.
+# Log: /var/log/cloud-init-output.log
+set -euxo pipefail
+
+dnf install -y nginx
+
+PAGE=/usr/share/nginx/html/index.html
+
+# IAM permissions can take a few seconds to propagate, so retry the download.
+for attempt in $(seq 1 12); do
+  if aws s3 cp "s3://${bucket_name}/${object_key}" "$PAGE" --region "${region}"; then
+    break
+  fi
+  echo "S3 download attempt $attempt failed, retrying in 5s"
+  sleep 5
+done
+
+# Fallback so the instance still identifies itself if S3 was unreachable.
+if ! grep -q "${project_name}" "$PAGE"; then
+  echo "<h1>${project_name}</h1><p>S3 download failed - fallback page.</p>" > "$PAGE"
+fi
+
+# Stamp the page with this instance's identity via IMDSv2.
+TOKEN=$(curl -sS -X PUT http://169.254.169.254/latest/api/token \
+  -H "X-aws-ec2-metadata-token-ttl-seconds: 300")
+IID=$(curl -sS -H "X-aws-ec2-metadata-token: $TOKEN" \
+  http://169.254.169.254/latest/meta-data/instance-id)
+AZ=$(curl -sS -H "X-aws-ec2-metadata-token: $TOKEN" \
+  http://169.254.169.254/latest/meta-data/placement/availability-zone)
+sed -i "s/__INSTANCE_ID__/$IID/g; s/__AZ__/$AZ/g" "$PAGE"
+
+systemctl enable --now nginx
