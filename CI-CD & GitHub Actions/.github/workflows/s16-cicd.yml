@@ -83,7 +83,7 @@ jobs:
       - name: Run tests with coverage
         run: |
           mkdir -p reports
-          pytest -v \
+          pytest -v --durations=3 \
             --junitxml=reports/junit.xml \
             --cov=app --cov-report=term-missing \
             --cov-report=xml:reports/coverage.xml

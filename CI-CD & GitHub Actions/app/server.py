@@ -13,6 +13,7 @@ Endpoints:
 
 import json
 import os
+import socketserver
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
@@ -73,8 +74,19 @@ class CalculatorHandler(BaseHTTPRequestHandler):
         print(f"{self.address_string()} - {fmt % args}", flush=True)
 
 
+class FastBindHTTPServer(ThreadingHTTPServer):
+    """HTTPServer.server_bind() calls socket.getfqdn(), a reverse-DNS lookup.
+    On the GitHub macOS runner that lookup took ~35 s per server start (seen in
+    the CI test timings), so skip it - the server name is never used here."""
+
+    def server_bind(self):
+        socketserver.TCPServer.server_bind(self)
+        host, port = self.server_address[:2]
+        self.server_name, self.server_port = host, port
+
+
 def make_server(host="0.0.0.0", port=8000):  # nosec B104 - must listen on all interfaces inside a container
-    return ThreadingHTTPServer((host, port), CalculatorHandler)
+    return FastBindHTTPServer((host, port), CalculatorHandler)
 
 
 if __name__ == "__main__":
