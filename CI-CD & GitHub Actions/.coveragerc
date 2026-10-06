@@ -1,0 +1,7 @@
+[run]
+source = app
+
+[report]
+# The interactive CLI loop in calculator.py cannot run under pytest (it blocks on input()).
+exclude_also =
+    if __name__ == .__main__.:

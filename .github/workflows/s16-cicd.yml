@@ -1,0 +1,308 @@
+# Session 16 — CI/CD & GitHub Actions demo pipeline.
+# Project folder: "CI-CD & GitHub Actions/" (based on the instructor's 10-final-cicd-pipeline).
+#
+#   CI  : test (matrix) -> test-report, security-check, build (artifact)
+#   CD  : docker (build + push to GHCR) -> deploy (kind cluster in the runner + smoke test)
+#
+# GitHub only executes workflows from the repository-root .github/workflows/ directory,
+# so this file is the one that runs. An identical copy lives in the project folder.
+
+name: S16 CI/CD - Calculator
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "CI-CD & GitHub Actions/**"
+      - ".github/workflows/s16-cicd.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "CI-CD & GitHub Actions/**"
+      - ".github/workflows/s16-cicd.yml"
+  workflow_dispatch:
+
+# Least privilege by default: every job can only read the repo.
+# The docker job widens this to packages: write for the GHCR push.
+permissions:
+  contents: read
+
+concurrency:
+  group: s16-cicd-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  APP_DIR: "CI-CD & GitHub Actions"
+  IMAGE_NAME: ghcr.io/saptak-cyber/s16-calculator   # GHCR names must be lowercase
+
+defaults:
+  run:
+    shell: bash
+    working-directory: "CI-CD & GitHub Actions"
+
+jobs:
+  # ───────────────────────────── CI ─────────────────────────────
+  test:
+    name: "CI / Test (py${{ matrix.python-version }}, ${{ matrix.os }})"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.12", "3.13", "3.14"]
+        include:
+          - os: macos-latest          # one extra leg on a different runner OS
+            python-version: "3.13"
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v7
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: ${{ env.APP_DIR }}/requirements.txt
+
+      - name: Show runner details
+        run: |
+          echo "Runner name : $RUNNER_NAME"
+          echo "Runner OS   : $RUNNER_OS ($RUNNER_ARCH)"
+          echo "Image       : ${ImageOS:-n/a} ${ImageVersion:-}"
+          python --version
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests with coverage
+        run: |
+          mkdir -p reports
+          pytest -v \
+            --junitxml=reports/junit.xml \
+            --cov=app --cov-report=term-missing \
+            --cov-report=xml:reports/coverage.xml
+
+      - name: Upload test report artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-report-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: ${{ env.APP_DIR }}/reports/
+          retention-days: 14
+
+  test-report:
+    name: "CI / Test report summary"
+    needs: test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .      # no checkout in this job
+    steps:
+      - name: Download all test report artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: test-report-*
+          path: test-reports
+
+      - name: Summarise JUnit + coverage results
+        run: |
+          find test-reports -type f | sort
+          python3 - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
+          import glob, os, xml.etree.ElementTree as ET
+          print("| Matrix leg | Tests | Failures | Errors | Skipped | Time (s) | Line coverage |")
+          print("|---|---|---|---|---|---|---|")
+          for leg in sorted(os.listdir("test-reports")):
+              suite = ET.parse(f"test-reports/{leg}/junit.xml").getroot()
+              suite = suite if suite.tag == "testsuite" else suite.find("testsuite")
+              cov = ET.parse(f"test-reports/{leg}/coverage.xml").getroot()
+              print(f"| {leg} | {suite.get('tests')} | {suite.get('failures')} | {suite.get('errors')} "
+                    f"| {suite.get('skipped')} | {float(suite.get('time')):.2f} | {float(cov.get('line-rate'))*100:.0f}% |")
+          PY
+
+  security-check:
+    name: "CI / Security check (sensitive files)"
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v7
+
+      - name: Check for sensitive files
+        run: |
+          echo "Checking project folder for common sensitive files..."
+          found=$(find . -type f \( -name ".env" -o -name "*.pem" -o -name "*.key" \) -print)
+          if [ -n "$found" ]; then
+            echo "Potential sensitive file(s) found:"; echo "$found"
+            exit 1
+          fi
+          echo "No common sensitive files found."
+
+  build:
+    name: "CI / Build application"
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"     # same minor version as the runtime image
+
+      - name: Build application
+        run: ./build.sh
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: calculator-build
+          path: ${{ env.APP_DIR }}/build/
+          retention-days: 14
+
+  # ───────────────────────────── CD ─────────────────────────────
+  docker:
+    name: "CD / Docker build & push to GHCR"
+    needs: [build, security-check]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write          # required to push to ghcr.io with GITHUB_TOKEN
+    outputs:
+      image: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v7
+
+      - name: Download build artifact from the build job
+        uses: actions/download-artifact@v8
+        with:
+          name: calculator-build
+          path: ${{ env.APP_DIR }}/ci-build
+
+      - name: Inspect downloaded artifact
+        run: |
+          find ci-build -type f -not -path '*/__pycache__/*' | sort
+          cat ci-build/build-info.txt
+
+      - name: "Secrets demo: GITHUB_TOKEN is masked in logs"
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "GITHUB_TOKEN present: $([ -n "$TOKEN" ] && echo yes || echo no), length ${#TOKEN}"
+          echo "Echoing the token anyway -> $TOKEN"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR with GITHUB_TOKEN
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build image from the CI artifact (push on main / manual runs)
+        id: push
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ env.APP_DIR }}/ci-build        # the exact files the build job produced
+          file: ${{ env.APP_DIR }}/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          build-args: APP_VERSION=${{ github.sha }}
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.IMAGE_NAME }}:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.description=Session 16 CI/CD demo - calculator API
+
+      - name: Image summary
+        run: |
+          echo "Image : $IMAGE_NAME:$GITHUB_SHA"
+          echo "Digest: ${{ steps.push.outputs.digest }}"
+          {
+            echo "### Image"
+            echo "- \`$IMAGE_NAME:$GITHUB_SHA\` (also \`:latest\`)"
+            echo "- digest \`${{ steps.push.outputs.digest }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    name: "CD / Deploy to Kubernetes (kind) + smoke test"
+    needs: docker
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read           # lets the token pull the image from GHCR
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v7
+
+      - name: Create throwaway kind cluster inside the runner
+        uses: helm/kind-action@v1.15.1
+        with:
+          cluster_name: s16-ci
+
+      - name: Cluster info
+        run: |
+          kubectl version
+          kubectl get nodes -o wide
+
+      - name: Create GHCR image pull secret from GITHUB_TOKEN
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          kubectl create secret docker-registry ghcr-pull \
+            --docker-server=ghcr.io \
+            --docker-username="${{ github.actor }}" \
+            --docker-password="$TOKEN"
+
+      - name: Render manifest with the pushed image and apply
+        env:
+          IMAGE: ${{ needs.docker.outputs.image }}
+        run: |
+          mkdir -p rendered
+          sed "s|__IMAGE__|${IMAGE}|" k8s/deployment.yaml > rendered/deployment.yaml
+          grep -n "image:" rendered/deployment.yaml
+          kubectl apply -f rendered/deployment.yaml -f k8s/service.yaml
+
+      - name: Wait for rollout
+        run: kubectl rollout status deployment/s16-calculator --timeout=180s
+
+      - name: Show deployed resources
+        run: |
+          kubectl get deploy,rs,pods,svc -o wide
+          echo "Image digests actually running:"
+          kubectl get pods -l app=s16-calculator \
+            -o jsonpath='{range .items[*]}{.metadata.name}{"  "}{.status.containerStatuses[0].imageID}{"\n"}{end}'
+
+      - name: Smoke test through the Service
+        run: |
+          kubectl port-forward svc/s16-calculator 8080:80 >/tmp/pf.log 2>&1 &
+          for _ in $(seq 1 20); do curl -fs http://127.0.0.1:8080/health >/dev/null && break; sleep 1; done
+          set -x
+          curl -fsS http://127.0.0.1:8080/
+          curl -fsS http://127.0.0.1:8080/health
+          curl -fsS "http://127.0.0.1:8080/calculate?a=10&b=5&op=add" \
+            | python3 -c 'import sys,json; d=json.load(sys.stdin); assert d["result"] == 15, d; print("add OK:", d)'
+          curl -fsS "http://127.0.0.1:8080/calculate?a=10&b=4&op=divide" \
+            | python3 -c 'import sys,json; d=json.load(sys.stdin); assert d["result"] == 2.5, d; print("divide OK:", d)'
+          curl -fsS http://127.0.0.1:8080/ \
+            | python3 -c 'import sys,json,os; d=json.load(sys.stdin); assert d["version"] == os.environ["GITHUB_SHA"], d; print("version matches commit:", d["version"])'
+          echo "SMOKE TEST PASSED" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Pod logs
+        if: always()
+        run: kubectl logs -l app=s16-calculator --tail=20 --prefix || true
+
+      - name: Debug on failure
+        if: failure()
+        run: |
+          kubectl describe pods -l app=s16-calculator
+          kubectl get events --sort-by=.lastTimestamp

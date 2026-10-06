@@ -1,0 +1,14 @@
+.git
+.github
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+reports/
+build/
+tests/
+screenshots/
+k8s/
+*.md
+.venv/
+venv/
