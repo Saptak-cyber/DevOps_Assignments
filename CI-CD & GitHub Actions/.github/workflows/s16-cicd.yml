@@ -14,11 +14,15 @@ on:
     branches: [main]
     paths:
       - "CI-CD & GitHub Actions/**"
+      - "!CI-CD & GitHub Actions/**/*.md"          # docs-only changes don't need a pipeline run
+      - "!CI-CD & GitHub Actions/screenshots/**"
       - ".github/workflows/s16-cicd.yml"
   pull_request:
     branches: [main]
     paths:
       - "CI-CD & GitHub Actions/**"
+      - "!CI-CD & GitHub Actions/**/*.md"          # docs-only changes don't need a pipeline run
+      - "!CI-CD & GitHub Actions/screenshots/**"
       - ".github/workflows/s16-cicd.yml"
   workflow_dispatch:
 
@@ -287,8 +291,8 @@ jobs:
           kubectl port-forward svc/s16-calculator 8080:80 >/tmp/pf.log 2>&1 &
           for _ in $(seq 1 20); do curl -fs http://127.0.0.1:8080/health >/dev/null && break; sleep 1; done
           set -x
-          curl -fsS http://127.0.0.1:8080/
-          curl -fsS http://127.0.0.1:8080/health
+          curl -fsS http://127.0.0.1:8080/; echo
+          curl -fsS http://127.0.0.1:8080/health; echo
           curl -fsS "http://127.0.0.1:8080/calculate?a=10&b=5&op=add" \
             | python3 -c 'import sys,json; d=json.load(sys.stdin); assert d["result"] == 15, d; print("add OK:", d)'
           curl -fsS "http://127.0.0.1:8080/calculate?a=10&b=4&op=divide" \
