@@ -20,11 +20,15 @@ on:
     branches: [main]
     paths:
       - "Complete CI-CD & DevSecOps/**"
+      - "!Complete CI-CD & DevSecOps/**/*.md"      # docs-only changes don't need a pipeline run
+      - "!Complete CI-CD & DevSecOps/screenshots/**"
       - ".github/workflows/s17-devsecops.yml"
   pull_request:
     branches: [main]
     paths:
       - "Complete CI-CD & DevSecOps/**"
+      - "!Complete CI-CD & DevSecOps/**/*.md"      # docs-only changes don't need a pipeline run
+      - "!Complete CI-CD & DevSecOps/screenshots/**"
       - ".github/workflows/s17-devsecops.yml"
   workflow_dispatch:
 
