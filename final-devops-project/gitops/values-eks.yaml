@@ -6,7 +6,7 @@
 # [skip ci], and Argo CD rolls that SHA out. Don't edit the tags by hand.
 backend:
   image:
-    tag: 1c0ef7bbbfa188f0cef89efe5156aedc5d932367
+    tag: dbbdd499373d8b3ef1c16e91899b2c2d06a91f7e
   autoscaling: # two t3.medium nodes: keep the HPA ceiling schedulable
     enabled: true
     minReplicas: 2
@@ -14,7 +14,7 @@ backend:
     targetCPUUtilizationPercentage: 60
 frontend:
   image:
-    tag: 1c0ef7bbbfa188f0cef89efe5156aedc5d932367
+    tag: dbbdd499373d8b3ef1c16e91899b2c2d06a91f7e
 # The ingress-nginx NLB has a generated DNS name, so the rule matches any Host header.
 ingress:
   host: ""
