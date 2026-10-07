@@ -1,0 +1,14 @@
+ClinicDesk {{ .Chart.AppVersion }} is installed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+  kubectl -n {{ .Release.Namespace }} get pods,svc{{ if .Values.ingress.enabled }},ingress{{ end }}{{ if or .Values.backend.autoscaling.enabled .Values.frontend.autoscaling.enabled }},hpa{{ end }}
+{{- if .Values.ingress.enabled }}
+
+Open http://{{ .Values.ingress.host }}/ (point the host at your Ingress controller's address).
+{{- else }}
+
+Open the UI with:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "clinicdesk.fullname" . }}-frontend 3000:80
+  then browse http://localhost:3000
+{{- end }}
+
+API docs: kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "clinicdesk.fullname" . }}-backend 8000:8000  ->  http://localhost:8000/docs

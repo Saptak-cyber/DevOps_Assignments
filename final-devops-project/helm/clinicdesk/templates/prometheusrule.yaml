@@ -1,0 +1,40 @@
+{{- if .Values.monitoring.prometheusRule.enabled }}
+{{- $fullname := include "clinicdesk.fullname" . -}}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ $fullname }}-backend
+  labels:
+    {{- include "clinicdesk.labels" . | nindent 4 }}
+    {{- with .Values.monitoring.prometheusRule.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    - name: clinicdesk.backend
+      rules:
+        - record: clinicdesk:http_requests:rate5m
+          expr: sum by (handler, method, status) (rate(http_requests_total{namespace="{{ .Release.Namespace }}"}[5m]))
+        - alert: ClinicDeskBackendDown
+          expr: sum(up{namespace="{{ .Release.Namespace }}", service="{{ $fullname }}-backend"}) == 0
+          for: 2m
+          labels: {severity: critical}
+          annotations:
+            summary: No ClinicDesk backend pod is being scraped successfully
+            description: Prometheus has had no healthy backend target for 2 minutes. Check pods, readiness and the ServiceMonitor.
+        - alert: ClinicDeskHigh5xxRate
+          expr: |
+            sum(rate(http_requests_total{namespace="{{ .Release.Namespace }}", status="5xx"}[5m]))
+              / clamp_min(sum(rate(http_requests_total{namespace="{{ .Release.Namespace }}"}[5m])), 1e-9) > 0.05
+          for: 5m
+          labels: {severity: warning}
+          annotations:
+            summary: More than 5% of ClinicDesk API requests are failing with 5xx
+        - alert: ClinicDeskSlowRequests
+          expr: |
+            histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{namespace="{{ .Release.Namespace }}"}[5m]))) > 1
+          for: 10m
+          labels: {severity: warning}
+          annotations:
+            summary: ClinicDesk API p95 latency is above 1 second
+{{- end }}

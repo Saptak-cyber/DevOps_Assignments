@@ -1,0 +1,11 @@
+apiVersion: v2
+name: clinicdesk
+description: ClinicDesk appointment booking app (React + FastAPI + PostgreSQL)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords: [clinic, appointments, fastapi, react]
+maintainers:
+  - name: Saptak Banerjee
+home: https://github.com/Saptak-cyber/DevOps_Assignments
+icon: https://raw.githubusercontent.com/Saptak-cyber/DevOps_Assignments/main/final-devops-project/application/frontend/public/favicon.svg

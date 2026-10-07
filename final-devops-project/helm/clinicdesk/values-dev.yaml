@@ -1,0 +1,17 @@
+# Local cluster (minikube): one replica each, no autoscaling, Ingress on clinicdesk.local.
+#   helm upgrade --install clinicdesk helm/clinicdesk -n clinicdesk --create-namespace -f helm/clinicdesk/values-dev.yaml
+config:
+  environment: dev
+  logLevel: DEBUG
+
+backend:
+  replicaCount: 1
+  autoscaling: {enabled: false}
+
+frontend:
+  replicaCount: 1
+  autoscaling: {enabled: false}
+
+ingress:
+  enabled: true
+  host: clinicdesk.local

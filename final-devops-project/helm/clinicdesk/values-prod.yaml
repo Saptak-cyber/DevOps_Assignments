@@ -1,0 +1,31 @@
+# EKS / production-like: two replicas minimum, HPA on, credentials from a pre-created Secret,
+# metrics scraped by kube-prometheus-stack. CI sets backend.image.tag / frontend.image.tag to the commit SHA.
+config:
+  environment: production
+  logLevel: INFO
+
+database:
+  existingSecret: clinicdesk-db
+
+backend:
+  replicaCount: 2
+  autoscaling: {enabled: true, minReplicas: 2, maxReplicas: 8, targetCPUUtilizationPercentage: 65}
+
+frontend:
+  replicaCount: 2
+  autoscaling: {enabled: true, minReplicas: 2, maxReplicas: 4}
+
+postgres:
+  persistence:
+    size: 5Gi
+    storageClass: ebs-csi-default-sc   # created by the aws-ebs-csi-driver add-on (terraform/)
+
+ingress:
+  enabled: true
+  host: clinicdesk.example.com
+
+monitoring:
+  serviceMonitor:
+    enabled: true
+  prometheusRule:
+    enabled: true

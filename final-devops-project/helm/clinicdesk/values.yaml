@@ -1,0 +1,85 @@
+# Default values for the ClinicDesk chart. Environment overrides: values-dev.yaml, values-prod.yaml.
+
+global:
+  imageRegistry: ghcr.io/saptak-cyber
+  imagePullSecrets: []        # e.g. [{name: ghcr-pull}] if the GHCR packages are private
+
+backend:
+  image:
+    repository: clinicdesk-backend
+    tag: latest               # CI overrides this with the commit SHA (--set backend.image.tag=<sha>)
+    pullPolicy: IfNotPresent
+  replicaCount: 2
+  port: 8000
+  resources:
+    requests: {cpu: 100m, memory: 160Mi}
+    limits: {cpu: 500m, memory: 384Mi}
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+
+frontend:
+  image:
+    repository: clinicdesk-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicaCount: 2
+  port: 8080
+  resources:
+    requests: {cpu: 25m, memory: 32Mi}
+    limits: {cpu: 200m, memory: 128Mi}
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 75
+
+# Non-secret settings rendered into the ConfigMap.
+config:
+  environment: kubernetes
+  logLevel: INFO
+  clinicTimezone: Asia/Kolkata
+
+# Database credentials. Either let the chart create the Secret (dev) or point at an
+# existing one created out-of-band with keys "username" and "password" (prod/GitOps).
+database:
+  name: clinicdesk
+  existingSecret: ""          # set to e.g. "clinicdesk-db" to skip creating a Secret
+  username: clinicdesk
+  password: ""                # empty = reuse the password already in the cluster, or generate one
+
+postgres:
+  enabled: true               # false = use an external database (e.g. Amazon RDS) at externalDatabase.host
+  image:
+    repository: postgres
+    tag: 18-alpine
+  persistence:
+    size: 1Gi
+    storageClass: ""          # "" = cluster default StorageClass
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+
+externalDatabase:
+  host: ""
+  port: 5432
+
+ingress:
+  enabled: false
+  className: nginx
+  host: clinicdesk.local      # "" = match any Host header (e.g. the raw load-balancer DNS name)
+  annotations: {}
+  tls: []                     # [{secretName: clinicdesk-tls, hosts: [clinicdesk.example.com]}]
+
+monitoring:
+  serviceMonitor:
+    enabled: false            # needs the Prometheus Operator CRDs (kube-prometheus-stack)
+    interval: 15s
+    labels:
+      release: kube-prometheus-stack
+  prometheusRule:
+    enabled: false            # alerting rules for the backend (same CRDs)
+    labels:
+      release: kube-prometheus-stack
