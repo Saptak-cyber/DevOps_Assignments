@@ -72,10 +72,15 @@ spec:
         - {name: run, emptyDir: {}}
         - {name: tmp, emptyDir: {}}
   volumeClaimTemplates:
-    - metadata:
+    # apiVersion/kind/volumeMode spelled out as the API server defaults them, so GitOps
+    # diffs (Argo CD) compare equal instead of flagging the StatefulSet as OutOfSync.
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
         name: data
       spec:
         accessModes: [ReadWriteOnce]
+        volumeMode: Filesystem
         {{- with .Values.postgres.persistence.storageClass }}
         storageClassName: {{ . }}
         {{- end }}
