@@ -1,6 +1,7 @@
 # DevOps Class Assignments
 
-Solutions for the eleven homework topics from the DevOps course, one folder per topic.
+Solutions for all 21 sessions of the DevOps course homework (sessions 1 and 2 share one folder),
+one folder per topic.
 Each folder contains a `README.md` with the write-up, real captured command output, and
 runnable code where applicable.
 
@@ -13,10 +14,19 @@ runnable code where applicable.
 | 5 | [Task5-Docker-Fundamentals](Task5-Docker-Fundamentals/) | Six Hello World apps: Node, Python, Java, Apache, React, Nginx | 6 apps + Dockerfiles, `build-and-run-all.sh` |
 | 6 | [Task6-Dockerfiles-And-Images](Task6-Dockerfiles-And-Images/) | Multi-stage build on port 8080 + 3 deployed applications | `multi-stage-app/`, `deployments/` |
 | 7 | [Task7-Docker-Networking](Task7-Docker-Networking/) | 3-network isolation, host network, bind mount, overlay network | 4 setup scripts |
-| 8 | [Kubernetes Fundamentals](Kubernetes%20Fundamentals/) | Minikube + kubectl install, cluster lifecycle (start/status/stop), control-plane & worker architecture | no manifests (CLI + architecture) |
+| 8 | [Kubernetes Fundamentals](Kubernetes%20Fundamentals/) | Minikube + kubectl install, cluster lifecycle (start/status/stop), control-plane & worker architecture, basic objects, Kubernetes Basics tutorial (modules 1–6) | CLI + architecture |
 | 9 | [Kubernetes Pods, ReplicaSets & Deployments](Kubernetes%20Pods,%20ReplicaSets%20&%20Deployments/) | 14 tasks: all 12 Pod lifecycle states, ReplicaSet self-healing, StatefulSet, DaemonSet, rollout/rollback, 4 deployment strategies measured, troubleshooting drills | 45+ manifests |
-| 10 | [Kubernetes Networking & Services](Kubernetes%20Networking%20&%20Services/) | 12 tasks: the 4 ports, all 5 Service types, CoreDNS/FQDN with `ndots` cost measured, no-selector Services, Deployment vs StatefulSet identity, LB cost analysis | 25+ manifests |
-| 11 | [Kubernetes Ingress, ConfigMaps & Secrets](Kubernetes%20Ingress,%20ConfigMaps%20&%20Secrets/) | 8 tasks: ConfigMaps, Secrets and the base64 newline bug, env vs volume live-update, ingress-nginx host/path routing, TLS termination | 15+ manifests |
+| 10 | [Kubernetes Networking & Services](Kubernetes%20Networking%20&%20Services/) | 12 tasks: the 4 ports, all 5 Service types, CoreDNS/FQDN with `ndots` cost measured, no-selector Services, Deployment vs StatefulSet identity, LB cost analysis, object comparisons; [`fqdn/`](Kubernetes%20Networking%20&%20Services/fqdn/) and [`coredns/`](Kubernetes%20Networking%20&%20Services/coredns/) READMEs | 25+ manifests |
+| 11 | [Kubernetes Ingress, ConfigMaps & Secrets](Kubernetes%20Ingress,%20ConfigMaps%20&%20Secrets/) | 8 tasks: ConfigMaps, Secrets and the base64 newline bug, env vs volume live-update, ingress-nginx host/path routing, TLS termination, Ingress vs Ingress Controller, Secret troubleshooting before/after | 15+ manifests |
+| 12 | [Kubernetes Storage, HPA & Probes](Kubernetes%20Storage,%20HPA%20&%20Probes/) | Session 13: emptyDir/hostPath/PV/PVC/StorageClass/dynamic provisioning, HPA scale-out and scale-down under load, mini project (PVC + HPA + probes) incl. bonus challenges | volume manifests, HPA + load generator, `mini-project/` |
+| 13 | [Kubernetes Troubleshooting](Kubernetes%20Troubleshooting/) | Session 14: the 8 core `kubectl` commands; 9 failure types each broken → investigated → root cause → fixed → verified; mini project with questions and table | 40+ broken/fixed manifests |
+| 14 | [Helm](Helm/) | Session 15: every listed `helm` command, install → upgrade → upgrade → rollback workflow, notes-chart mini project | 3 charts |
+| 15 | [CI-CD & GitHub Actions](CI-CD%20&%20GitHub%20Actions/) | Session 16: CI/CD demo — matrix test, artifacts, GHCR push, deploy to kind in the runner; green and deliberately red runs | app, Dockerfile, [`s16-cicd.yml`](.github/workflows/s16-cicd.yml) |
+| 16 | [Complete CI-CD & DevSecOps](Complete%20CI-CD%20&%20DevSecOps/) | Session 17: Build → Test → SAST → SCA → secret scan → image build → image scan → security gate → push → deploy; gate shown blocking a vulnerable dependency | app, scanner configs, gate policy, [`s17-devsecops.yml`](.github/workflows/s17-devsecops.yml) |
+| 17 | [Terraform & Infrastructure as Code](Terraform%20&%20Infrastructure%20as%20Code/) | Session 18: S3 bucket on real AWS (init → destroy), research READMEs for IAM, EC2, S3, VPC, DynamoDB & RDS | `terraform-s3-demo/`, `aws-services/` |
+| 18 | [Cloud & Terraform in Action](Cloud%20&%20Terraform%20in%20Action/) | Session 19: VPC + subnet + IGW + SG + EC2 (nginx) + S3 on real AWS, dependencies, state, plan/apply/destroy | Terraform project |
+| 19 | [Monitoring, Observability & GitOps](Monitoring,%20Observability%20&%20GitOps/) | Session 20: kube-prometheus-stack metrics/alerts/Grafana, Jaeger trace demo, Argo CD GitOps mini project (Git change → sync, self-heal) | monitoring values, alert rules, `gitops/` |
+| 20 | [final-devops-project](final-devops-project/) | Session 21: ClinicDesk (FastAPI + React + PostgreSQL) through CI, DevSecOps, GHCR, Terraform-provisioned EKS, Helm, Ingress, HPA, Prometheus/Grafana, Argo CD GitOps, troubleshooting challenge | full project, [`final-devops-project.yml`](.github/workflows/final-devops-project.yml) |
 
 ## Verification status
 
@@ -59,6 +69,26 @@ Everything documented here was actually executed. Highlights:
   kubelet sync (env stayed `INFO`, the mounted file became `DEBUG`); Secrets shown mounted on
   **tmpfs**; the trailing-newline base64 bug reproduced down to the `0a` byte in a hexdump; and
   host + path routing plus TLS termination verified end to end.
+* **Storage, HPA & Probes** — PV/PVC binding gotchas on minikube found and fixed
+  (`storageClassName: ""`, provisioner RBAC); HPA scaled 1 → 5 under load and back to 1 exactly
+  after the 5-minute stabilization window; mini-project data survived Pod deletion.
+* **Kubernetes Troubleshooting** — nine failure types reproduced and fixed with before/after
+  output; the class `dnsutils:1.3` image turned out to no longer exist and was replaced.
+* **Helm** — Helm v4.3.0; every listed command run, including install from the real bitnami repo;
+  the mini-project's bad upgrade shown silently resetting prod values until rolled back.
+* **CI/CD & DevSecOps** — both pipelines green on GitHub Actions, images pushed to GHCR with
+  commit-SHA tags and deployed to kind inside the runner; the security gate shown blocking a
+  run with a vulnerable `cryptography` pin (push and deploy skipped).
+* **Terraform (Sessions 18–19)** — applied on a real AWS account in `ap-south-1`, verified with the
+  AWS CLI (and `curl` to the EC2 nginx page), then destroyed; a final CLI sweep found nothing left.
+* **Monitoring, Observability & GitOps** — PromQL CPU/memory queries, four custom alerts driven to
+  *firing*, Grafana API queries, a Jaeger HotROD trace; Argo CD synced a Git change of
+  replicas 2 → 3 and reverted a manual `kubectl scale` (self-heal).
+* **Final project (ClinicDesk)** — 10-job pipeline (tests, SAST, SCA, secret scan, image scan,
+  security gate, GHCR push, kind smoke test, GitOps tag bump) green on GitHub; Terraform-provisioned
+  EKS (61 resources, ~70 min uptime) running the Helm chart behind an NLB, HPA scaling 2 → 5,
+  Prometheus/Grafana scraping the backend, Argo CD rolling commit `dbbdd49` onto the cluster;
+  seven troubleshooting issues fixed on EKS; then fully destroyed.
 
 ## Environment
 
@@ -70,10 +100,13 @@ Everything documented here was actually executed. Highlights:
 | Ingress | ingress-nginx v1.15.1 (`minikube addons enable ingress`) |
 | Linux outputs | captured inside `ubuntu:22.04` containers |
 | Git | 2.x |
+| Helm / Terraform | Helm v4.3.0, Terraform 1.16, AWS provider 6.x |
+| Cloud | AWS `ap-south-1` (Sessions 18, 19, 21) — all resources destroyed after verification |
+| CI | GitHub Actions on this repository; workflows in [`.github/workflows/`](.github/workflows/) |
 
 Where a command is Linux-only (`journalctl`, `adduser`, `useradd`, and `--network host`
-reaching the laptop's own `localhost`), the README says so explicitly and shows the
-expected Ubuntu output alongside a note on how to reproduce it.
+reaching the laptop's own `localhost`), the README says so explicitly. `adduser`/`useradd` were
+run in `ubuntu:22.04` and `journalctl` on a systemd node, so those outputs are real as well.
 
 ## Running everything
 
