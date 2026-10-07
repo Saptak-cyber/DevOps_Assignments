@@ -36,7 +36,6 @@ Terraform & Infrastructure as Code/
 │   ├── 04-vpc/README.md
 │   └── 05-dynamodb-rds/README.md
 └── screenshots/
-    └── CAPTURE-LIST.md
 ```
 
 ---

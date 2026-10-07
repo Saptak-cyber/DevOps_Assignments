@@ -106,7 +106,7 @@ Cloud & Terraform in Action/
 ├── .terraform.lock.hcl         # provider pins, committed
 ├── .gitignore
 ├── README.md
-└── screenshots/CAPTURE-LIST.md
+└── screenshots/
 ```
 
 **What changed from the instructor's `08-mini-project`.** The VPC/subnet/IGW/route-table/association code is kept as-is, apart from names, CIDRs and AZ becoming variables and tags moving to `default_tags`. The security group **drops the 443 ingress rule**, because the assignment allows HTTP 80 only, and **replaces allow-all egress with 80/443 only**. I then added the *Optional Extension — EC2* that the mini-project describes, plus the S3 bucket from the suggested architecture.

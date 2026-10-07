@@ -2532,7 +2532,7 @@ Re-enabling automated sync found nothing to change: every manual fix had restore
 
 ## 14. Screenshots
 
-All screenshots are in [`screenshots/`](./screenshots); [`screenshots/CAPTURE-LIST.md`](./screenshots/CAPTURE-LIST.md) says how each was produced.
+All screenshots are in [`screenshots/`](./screenshots); the table below says how each was produced.
 
 | File | Shows | Status |
 | --- | --- | --- |

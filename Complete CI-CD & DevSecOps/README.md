@@ -67,7 +67,7 @@ Complete CI-CD & DevSecOps/
 | Security tools configuration | [`.bandit.yml`](./.bandit.yml), [`.gitleaks.toml`](./.gitleaks.toml), [`.trivyignore`](./.trivyignore), [`security/gate-policy.toml`](./security/gate-policy.toml), [`security/security_gate.py`](./security/security_gate.py); Semgrep rule packs + tool versions are pinned in the workflow |
 | Kubernetes manifests | [`k8s/`](./k8s) |
 | Successful pipeline output | §3–§13 below |
-| Screenshots | [`screenshots/CAPTURE-LIST.md`](./screenshots/CAPTURE-LIST.md) |
+| Screenshots | [`screenshots/`](./screenshots/) |
 
 ---
 

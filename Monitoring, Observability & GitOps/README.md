@@ -42,7 +42,7 @@ Monitoring, Observability & GitOps/
 │       ├── namespace.yaml
 │       ├── deployment.yaml                 # replicas: 3 (was 2 — changed through Git, Step 7)
 │       └── service.yaml
-└── screenshots/CAPTURE-LIST.md
+└── screenshots/
 ```
 
 ---

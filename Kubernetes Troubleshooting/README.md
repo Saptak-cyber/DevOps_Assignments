@@ -44,7 +44,7 @@ Kubernetes Troubleshooting/
 │   ├── 08-pod-networking/         deny-all-ingress.yaml, allow-client-to-web.yaml (written for this task)
 │   └── 09-configuration/          broken-missing-env.yaml (scenario-1), broken-wrong-key.yaml, app-config.yaml, fixed-*.yaml
 ├── mini-project/           # class deployment.yaml, service.yaml, broken-pod.yaml + service-broken-selector.yaml
-└── screenshots/CAPTURE-LIST.md
+└── screenshots/
 ```
 
 ---

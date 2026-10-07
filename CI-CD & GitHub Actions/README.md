@@ -59,7 +59,7 @@ CI-CD & GitHub Actions/
 | GitHub Actions workflow | [`.github/workflows/s16-cicd.yml`](./.github/workflows/s16-cicd.yml) (runs from repo root) |
 | CI pipeline | jobs `test` (matrix) → `test-report`, `security-check`, `build` |
 | CD pipeline | jobs `docker` (build + push to GHCR) → `deploy` (kind + smoke test) |
-| Screenshots of successful pipeline execution | [`screenshots/`](./screenshots/CAPTURE-LIST.md) |
+| Screenshots of successful pipeline execution | [`screenshots/`](./screenshots/) |
 | README.md | this file |
 
 **Why `server.py` was added:** the class `calculator.py` is an interactive CLI that blocks on `input()`. That is fine for `pytest`, but a container running it would exit immediately (no stdin) and there would be nothing for Kubernetes probes or a smoke test to call. `server.py` exposes the *same* four functions over HTTP using only the standard library, so the image still has zero third-party runtime dependencies.

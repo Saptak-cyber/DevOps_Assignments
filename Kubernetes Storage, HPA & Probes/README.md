@@ -31,7 +31,7 @@ Kubernetes Storage, HPA & Probes/
 │   ├── load-generator.yaml         # busybox wget loop against hpa-demo-service
 │   └── hpa-watch-output.txt        # raw 15-second HPA samples from the whole run
 ├── mini-project/                   # Task 3 (class manifests, unchanged)
-└── screenshots/CAPTURE-LIST.md
+└── screenshots/
 ```
 
 ---
