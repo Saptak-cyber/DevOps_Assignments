@@ -1637,12 +1637,13 @@ Total gitleaks findings: 0
 
 ### 10.1 Real findings that were fixed or accepted
 
-Running the scanners before writing the gate surfaced four real problems:
+Running the scanners surfaced five real problems:
 
 1. **Bandit B608 (SQL built from a string)** in `alembic/versions/0002_seed_doctors.py`, the migration's `downgrade()` built `DELETE ... IN ('a','b')` with an f-string. The values were constants, but the pattern is exactly what B608 exists to catch, so it now uses SQLAlchemy's `doctors.delete().where(doctors.c.full_name.in_(...))` with bound parameters. Verified with a real `upgrade` + `downgrade` on SQLite (doctors left: 0).
 2. **Trivy KSV-0014 (root filesystem not read-only)** on the PostgreSQL StatefulSet, in both the raw manifest and the chart. Tested locally that `postgres:18-alpine` runs with `--read-only` plus tmpfs for `/tmp` and `/var/run/postgresql`, then made it read-only with two emptyDirs. All three containers now have read-only root filesystems.
 3. **Trivy AWS-0040 / AWS-0041 (public EKS endpoint, open CIDR)** and **AWS-0104 (unrestricted node egress)** from inside the EKS module. These are needed for this setup (kubectl from a laptop, nodes pulling images through the NAT), so they are **accepted risks** in `security/trivyignore.yaml`, each with a written statement and an `expired_at: 2026-12-31`, after which the gate fails again until someone re-reviews them.
-4. **44 HIGH CVEs in the Debian-slim Python base** (Phase 1): all in OS packages the API never uses, none fixable. Switching to `python:3.14-alpine` took the backend to zero and cut the image from 346 MB to 212 MB.
+4. **gitleaks `curl-auth-user` in this README** (after the EKS run): a captured command `curl -u admin:"$(cat <file>)"` that read the temporary Grafana password from a local file. No credential value was ever written, but the pattern is exactly what the rule looks for and the commit (`b1bc8d3`) was already pushed. I removed the line and added a commit-scoped allowlist entry with the reason to `security/gitleaks.toml`, so the history scan stays meaningful for every other commit instead of being switched off.
+5. **44 HIGH CVEs in the Debian-slim Python base** (Phase 1): all in OS packages the API never uses, none fixable. Switching to `python:3.14-alpine` took the backend to zero and cut the image from 346 MB to 212 MB.
 
 Phase 1's local scans (kept for reference):
 
@@ -1781,14 +1782,6 @@ $ curl -s http://127.0.0.1:9090/api/v1/query --data-urlencode 'query=sum by (han
 
 $ curl -s http://127.0.0.1:9090/api/v1/rules | python3 -c 'import sys,json; [print(g["name"], [(r["name"], r.get("state", r["health"])) for r in g["rules"]]) for g in json.load(sys.stdin)["data"]["groups"] if g["name"].startswith("clinicdesk")]'
 clinicdesk.backend [('clinicdesk:http_requests:rate5m', 'ok'), ('ClinicDeskBackendDown', 'inactive'), ('ClinicDeskHigh5xxRate', 'inactive'), ('ClinicDeskSlowRequests', 'inactive')]
-
-$ curl -s -u admin:"$(cat <scratch>/s21/grafana-admin.txt)" http://127.0.0.1:3001/api/health
-(eval):1: no such file or directory: scratch
-{
-  "database": "ok",
-  "version": "13.2.3",
-  "commit": "90ffed056f0884267356c12a0eeb72a022af53f1"
-}
 ```
 
 Both backend pods are `up` targets, scraped in 4–5 ms, and the alert rules are loaded (`inactive` = healthy). The `increase()` values are 0 at this point only because the counters were minutes old; during the load test the same metric read about 72 requests per second per endpoint. Grafana's own API, with the panel query evaluated server-side over the last 15 minutes (the load test window):
