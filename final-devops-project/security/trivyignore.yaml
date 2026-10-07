@@ -1,0 +1,22 @@
+# Accepted risks for `trivy config` (IaC scan). Every entry needs a statement and an expiry date,
+# after which Trivy reports it again and the security gate fails until it is re-reviewed.
+misconfigurations:
+  - id: AWS-0040
+    paths: ["terraform-aws-modules/eks/aws/main.tf"]
+    statement: >-
+      Public EKS API endpoint is required: kubectl/helm run from a laptop and GitHub-hosted runners
+      with no VPN or bastion. Mitigated by IAM authentication (access entries) and the
+      endpoint_public_access_cidrs variable, which should be narrowed to the operator's IP.
+    expired_at: 2026-12-31
+  - id: AWS-0041
+    paths: ["terraform-aws-modules/eks/aws/main.tf"]
+    statement: >-
+      Same endpoint as AWS-0040; the default 0.0.0.0/0 is a classroom default exposed as the
+      endpoint_public_access_cidrs variable. Production tfvars must set a /32.
+    expired_at: 2026-12-31
+  - id: AWS-0104
+    paths: ["terraform-aws-modules/eks/aws/node_groups.tf"]
+    statement: >-
+      Worker nodes need egress to the internet through the NAT gateway to pull images from GHCR,
+      Docker Hub and ECR and to reach AWS APIs. They have no inbound exposure (private subnets).
+    expired_at: 2026-12-31

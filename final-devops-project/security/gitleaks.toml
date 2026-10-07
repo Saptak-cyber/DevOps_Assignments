@@ -1,0 +1,30 @@
+# gitleaks configuration (secret scanning) for the ClinicDesk project.
+#   gitleaks dir final-devops-project --config final-devops-project/security/gitleaks.toml
+title = "ClinicDesk gitleaks config"
+
+[extend]
+useDefault = true          # ~200 built-in rules: AWS keys, GitHub tokens, private keys, generic API keys, ...
+
+# Kubernetes Secret manifests must never carry a real value in Git: anything in a
+# Secret's data/stringData other than the documented placeholder is flagged.
+[[rules]]
+id = "k8s-secret-literal-password"
+description = "Kubernetes Secret with a literal password value"
+regex = '''(?m)^\s*password:\s*["']?([^\s"'{}]{6,})["']?\s*$'''
+secretGroup = 1
+keywords = ["password:"]
+path = '''(^|/)kubernetes/.*\.ya?ml$'''
+
+  [[rules.allowlists]]
+  description = "documented placeholder in the Secret template"
+  regexes = ['''^REPLACE_ME$''']
+
+[[allowlists]]
+description = "generated reports, dependency trees, Terraform provider caches"
+paths = [
+  '''(^|/)reports/''',
+  '''(^|/)node_modules/''',
+  '''(^|/)\.terraform/''',
+  '''(^|/)__pycache__/''',
+  '''package-lock\.json$''',
+]

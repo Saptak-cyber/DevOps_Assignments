@@ -1,0 +1,14 @@
+# Trivy settings shared by the CI scans (trivy fs / trivy config / trivy image).
+#   trivy <subcommand> --config security/trivy-config.yaml ...
+severity:
+  - HIGH
+  - CRITICAL
+scan:
+  skip-dirs:
+    - application/frontend/node_modules
+    - terraform/.terraform
+misconfiguration:
+  # Render the chart with production values when scanning it as IaC.
+  helm:
+    values:
+      - helm/clinicdesk/values-prod.yaml

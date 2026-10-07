@@ -1,0 +1,42 @@
+# Security gate thresholds for the ClinicDesk pipeline, read by security/security_gate.py.
+# N = "at most N findings of this kind"; -1 = report only, never block.
+# A missing or unreadable report fails the gate (fail-closed).
+
+[bandit]            # SAST: Python AST checks on application/backend (config: security/bandit.yml)
+max_high = 0
+max_medium = 0
+max_low = -1
+
+[semgrep]           # SAST: p/python, p/react, p/dockerfile registry packs
+max_high = 0        # semgrep ERROR
+max_medium = 0      # semgrep WARNING
+max_low = -1        # semgrep INFO
+
+[pip_audit]         # SCA: PyPI advisories against requirements-dev.txt (includes runtime deps)
+max_vulns = 0
+ignore_ids = []     # an ID goes here only with a written justification and an expiry date
+
+[npm_audit]         # SCA: npm advisories against package-lock.json
+max_critical = 0
+max_high = 0
+max_moderate = 0
+
+[trivy_fs]          # SCA: Trivy on requirements.txt + package-lock.json
+max_critical = 0
+max_high = 0
+max_critical_unfixed = 0
+max_high_unfixed = -1
+
+[trivy_config]      # IaC: Kubernetes manifests, Helm chart (prod values), Dockerfiles, Terraform
+max_critical = 0    # accepted risks live in security/trivyignore.yaml, each with a statement + expiry
+max_high = 0
+max_medium = -1
+
+[gitleaks]          # Secret scan: current files + full git history of final-devops-project/
+max_findings = 0
+
+[trivy_image]       # Container images: Alpine OS packages + Python site-packages
+max_critical = 0
+max_high = 0
+max_critical_unfixed = 0
+max_high_unfixed = 0    # Alpine bases give zero today, so even unfixed HIGH blocks

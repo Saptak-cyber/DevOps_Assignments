@@ -1,0 +1,7 @@
+# Bandit (Python SAST). Used as: bandit -c security/bandit.yml -r application/backend
+# Tests use assert/fixtures on purpose and the virtualenv is third-party code.
+exclude_dirs:
+  - application/backend/tests
+  - application/backend/.venv
+# Nothing is skipped globally; a suppression must be an inline "# nosec BXXX" with a reason.
+skips: []
