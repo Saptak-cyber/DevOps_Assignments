@@ -25,4 +25,4 @@ Every command needed is in the README, in the section that references the screen
 
 Terminal screenshots are renderings of the real command output already captured in the README (same commands, same output; very long outputs are trimmed with a marked `[… lines trimmed …]` line).
 
-`05-nginx-page.png` shows the `curl` of the nginx page from the README rather than a browser window, because the EC2 instance had already been destroyed.
+`01-vpc-resource-map.png` and `05-nginx-page.png` are live captures (AWS console and browser) from a re-apply of this same project on 2026-10-07, so the VPC, instance and bucket IDs differ from the README output; the stack was destroyed again right after. The account ID is masked as `<account-id>`.

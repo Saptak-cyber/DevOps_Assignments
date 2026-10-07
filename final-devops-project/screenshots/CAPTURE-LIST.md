@@ -21,7 +21,7 @@ The EKS cluster was destroyed after the run to stop AWS charges, so the rows mar
 | `10-helm-lint-template.png` | `helm lint` (dev + prod) and the kubeconform summaries | 7.1 | to capture |
 | `11-terraform-plan.png` | End of `terraform plan`: `Plan: 61 to add, 0 to change, 0 to destroy.` | 8.1 | to capture |
 | `12-eks-app-via-ingress.png` | The app on EKS through the ingress-nginx NLB | 6.2 | captured |
-| `13-aws-console-eks.png` | AWS console (ap-south-1): VPC `clinicdesk-dev-vpc` and EKS cluster `clinicdesk-eks` Active | 8.3 | needs a re-apply |
+| `13-aws-console-eks.png` | AWS console (ap-south-1): VPC `clinicdesk-dev-vpc` and EKS cluster `clinicdesk-eks` Active | 8.3 | captured (re-apply on 2026-10-07; account ID masked) |
 | `14-prometheus-targets.png` | Prometheus Status → Target health, `clinicdesk-backend` targets UP | 11.2 | captured |
 | `15-grafana-dashboard.png` | Grafana "ClinicDesk API" dashboard with live data | 11.2 | captured |
 | `16-argocd-app.png` | Argo CD application `clinicdesk`: Synced + Healthy | 12.3 | captured |
