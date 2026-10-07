@@ -1,0 +1,414 @@
+# Session 21 — Final DevOps Project (ClinicDesk) CI/CD + DevSecOps + GitOps promotion.
+# Project folder: final-devops-project/
+#
+#   1 Test (pytest + vite build) -> 2 SAST -> 3 SCA + IaC -> 4 Secret scan -> 5 Docker build
+#   -> 6 Image scan -> 7 Security gate -> 8 Push to GHCR (:<commit sha>)
+#   -> 9 Kubernetes deployment check (Helm chart into kind + smoke test)
+#   -> 10 GitOps promote (bump image tags in gitops/values-eks.yaml, commit [skip ci])
+#   -> Argo CD on EKS notices the commit and rolls the new SHA out.
+#
+# Scanners run in report mode and upload JSON; only the Security Gate decides pass/fail
+# (security/gate-policy.toml). The images pushed are the exact tarballs that were scanned.
+#
+# GitHub only runs workflows from the repository-root .github/workflows/, so this file is
+# the one that executes; an identical copy lives in final-devops-project/.github/workflows/.
+
+name: Final Project - ClinicDesk CI/CD
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "final-devops-project/**"
+      - "!final-devops-project/**/*.md"
+      - "!final-devops-project/screenshots/**"
+      - "!final-devops-project/gitops/**"          # promotion commits and Argo CD config only
+      - ".github/workflows/final-devops-project.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "final-devops-project/**"
+      - ".github/workflows/final-devops-project.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: final-devops-project-${{ github.ref }}
+  cancel-in-progress: false          # never cancel a run half-way through promotion
+
+env:
+  PROJECT: final-devops-project
+  REGISTRY: ghcr.io/saptak-cyber
+  PYTHON_VERSION: "3.14"
+  NODE_VERSION: "24"
+  TRIVY_VERSION: "0.75.0"
+  GITLEAKS_VERSION: "8.30.1"
+
+defaults:
+  run:
+    shell: bash
+    working-directory: final-devops-project
+
+jobs:
+  # ── 1. Build & test ──────────────────────────────────────────────────────
+  test:
+    name: "1. Test (pytest + frontend build)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: ${{ env.PROJECT }}/application/backend/requirements*.txt
+
+      - name: Install backend dependencies
+        working-directory: final-devops-project/application/backend
+        run: pip install -r requirements-dev.txt
+
+      - name: pytest (fails the pipeline on any failing test)
+        working-directory: final-devops-project/application/backend
+        run: |
+          mkdir -p ../../reports
+          python -m pytest -v --junitxml=../../reports/junit.xml
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ${{ env.PROJECT }}/application/frontend/package-lock.json
+
+      - name: Frontend build (npm ci + vite build)
+        working-directory: final-devops-project/application/frontend
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+          ls -l dist dist/assets
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: test-report
+          path: ${{ env.PROJECT }}/reports/
+          retention-days: 14
+
+  # ── 2. SAST ──────────────────────────────────────────────────────────────
+  sast:
+    name: "2. SAST (Bandit + Semgrep)"
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Install SAST tools
+        run: pip install bandit==1.9.4 semgrep==1.179.0
+      - name: Bandit (Python)
+        run: |
+          mkdir -p reports
+          bandit -c security/bandit.yml -r application/backend --exit-zero
+          bandit -c security/bandit.yml -r application/backend -f json -o reports/bandit.json --exit-zero -q
+      - name: Semgrep (p/python, p/react, p/dockerfile)
+        env:
+          SEMGREP_SEND_METRICS: "off"
+        run: |
+          semgrep scan --config p/python --config p/react --config p/dockerfile \
+            --metrics=off --disable-version-check --json -o reports/semgrep.json \
+            application/backend/app application/backend/alembic application/frontend/src \
+            application/backend/Dockerfile application/frontend/Dockerfile
+          python3 -c "import json; r=json.load(open('reports/semgrep.json'))['results']; print(f'Semgrep findings: {len(r)}'); [print(' ', x['extra']['severity'], x['check_id'], x['path'], x['start']['line']) for x in r]"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: report-sast
+          path: ${{ env.PROJECT }}/reports/
+          retention-days: 14
+
+  # ── 3. SCA + IaC ─────────────────────────────────────────────────────────
+  sca:
+    name: "3. SCA + IaC (pip-audit, npm audit, Trivy fs/config)"
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install Trivy ${{ env.TRIVY_VERSION }} (checksum-verified)
+        working-directory: /tmp
+        run: |
+          V=$TRIVY_VERSION
+          curl -sSfLO "https://github.com/aquasecurity/trivy/releases/download/v${V}/trivy_${V}_Linux-64bit.tar.gz"
+          curl -sSfLO "https://github.com/aquasecurity/trivy/releases/download/v${V}/trivy_${V}_checksums.txt"
+          grep " trivy_${V}_Linux-64bit.tar.gz\$" "trivy_${V}_checksums.txt" | sha256sum -c -
+          sudo tar -xzf "trivy_${V}_Linux-64bit.tar.gz" -C /usr/local/bin trivy
+          trivy --version
+      - name: pip-audit (backend runtime + dev dependencies)
+        run: |
+          mkdir -p reports
+          pip install pip-audit==2.10.1
+          pip-audit --progress-spinner off -r application/backend/requirements-dev.txt || true
+          pip-audit --progress-spinner off -r application/backend/requirements-dev.txt -f json -o reports/pip-audit.json || true
+      - name: npm audit (frontend lockfile)
+        working-directory: final-devops-project/application/frontend
+        run: |
+          npm audit || true
+          npm audit --json > ../../reports/npm-audit.json || true
+      - name: Trivy fs (dependency manifests)
+        run: |
+          trivy fs --config security/trivy-config.yaml --scanners vuln --no-progress application
+          trivy fs --config security/trivy-config.yaml --scanners vuln --format json -o reports/trivy-fs.json --quiet application
+      - name: Trivy config (IaC - Kubernetes, Helm, Dockerfiles, Terraform)
+        run: |
+          trivy config --config security/trivy-config.yaml --ignorefile security/trivyignore.yaml .
+          trivy config --config security/trivy-config.yaml --ignorefile security/trivyignore.yaml \
+            --format json -o reports/trivy-config.json --quiet .
+      - uses: actions/upload-artifact@v7
+        with:
+          name: report-sca
+          path: ${{ env.PROJECT }}/reports/
+          retention-days: 14
+
+  # ── 4. Secret scan ───────────────────────────────────────────────────────
+  secrets:
+    name: "4. Secret scan (gitleaks)"
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0     # full history: a secret committed then deleted is still a leak
+      - name: Install gitleaks ${{ env.GITLEAKS_VERSION }} (checksum-verified)
+        working-directory: /tmp
+        run: |
+          V=$GITLEAKS_VERSION
+          curl -sSfLO "https://github.com/gitleaks/gitleaks/releases/download/v${V}/gitleaks_${V}_linux_x64.tar.gz"
+          curl -sSfLO "https://github.com/gitleaks/gitleaks/releases/download/v${V}/gitleaks_${V}_checksums.txt"
+          grep " gitleaks_${V}_linux_x64.tar.gz\$" "gitleaks_${V}_checksums.txt" | sha256sum -c -
+          sudo tar -xzf "gitleaks_${V}_linux_x64.tar.gz" -C /usr/local/bin gitleaks
+          gitleaks version
+      - name: gitleaks - current files and full history of the project
+        run: |
+          mkdir -p reports
+          gitleaks dir . --config security/gitleaks.toml --no-banner --redact -v \
+            --report-format json --report-path reports/gitleaks-dir.json --exit-code 0
+          gitleaks git .. --config security/gitleaks.toml --no-banner --redact -v \
+            --log-opts="--all -- final-devops-project .github/workflows/final-devops-project.yml" \
+            --report-format json --report-path reports/gitleaks-history.json --exit-code 0
+          jq -s 'add' reports/gitleaks-dir.json reports/gitleaks-history.json > reports/gitleaks.json
+          echo "Total gitleaks findings: $(jq length reports/gitleaks.json)"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: report-secrets
+          path: ${{ env.PROJECT }}/reports/
+          retention-days: 14
+
+  # ── 5. Docker build ──────────────────────────────────────────────────────
+  docker-build:
+    name: "5. Docker build (${{ matrix.component }})"
+    needs: [sast, sca, secrets]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - name: Build to a tarball (scanned, then pushed unchanged)
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ env.PROJECT }}/application/${{ matrix.component }}
+          tags: ${{ env.REGISTRY }}/clinicdesk-${{ matrix.component }}:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.title=clinicdesk-${{ matrix.component }}
+          outputs: type=docker,dest=${{ runner.temp }}/${{ matrix.component }}.tar
+          cache-from: type=gha,scope=clinicdesk-${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=clinicdesk-${{ matrix.component }}
+      - name: Inspect image
+        run: |
+          docker load -i "$RUNNER_TEMP/${{ matrix.component }}.tar"
+          IMG="$REGISTRY/clinicdesk-${{ matrix.component }}:$GITHUB_SHA"
+          docker image ls "$REGISTRY/clinicdesk-${{ matrix.component }}"
+          docker image inspect "$IMG" --format 'User={{.Config.User}}  ExposedPorts={{json .Config.ExposedPorts}}'
+          test "$(docker image inspect "$IMG" --format '{{.Config.User}}')" != "" || { echo "image runs as root"; exit 1; }
+      - uses: actions/upload-artifact@v7
+        with:
+          name: image-${{ matrix.component }}
+          path: ${{ runner.temp }}/${{ matrix.component }}.tar
+          retention-days: 3
+
+  # ── 6. Image scan ────────────────────────────────────────────────────────
+  image-scan:
+    name: "6. Image scan (${{ matrix.component }})"
+    needs: docker-build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: image-${{ matrix.component }}
+          path: ${{ runner.temp }}
+      - name: Install Trivy ${{ env.TRIVY_VERSION }} (checksum-verified)
+        working-directory: /tmp
+        run: |
+          V=$TRIVY_VERSION
+          curl -sSfLO "https://github.com/aquasecurity/trivy/releases/download/v${V}/trivy_${V}_Linux-64bit.tar.gz"
+          curl -sSfLO "https://github.com/aquasecurity/trivy/releases/download/v${V}/trivy_${V}_checksums.txt"
+          grep " trivy_${V}_Linux-64bit.tar.gz\$" "trivy_${V}_checksums.txt" | sha256sum -c -
+          sudo tar -xzf "trivy_${V}_Linux-64bit.tar.gz" -C /usr/local/bin trivy
+      - name: Trivy image scan
+        run: |
+          mkdir -p reports
+          trivy image --input "$RUNNER_TEMP/${{ matrix.component }}.tar" --scanners vuln \
+            --severity HIGH,CRITICAL --no-progress
+          trivy image --input "$RUNNER_TEMP/${{ matrix.component }}.tar" --scanners vuln \
+            --format json -o "reports/trivy-image-${{ matrix.component }}.json" --quiet
+      - uses: actions/upload-artifact@v7
+        with:
+          name: report-image-${{ matrix.component }}
+          path: ${{ env.PROJECT }}/reports/
+          retention-days: 14
+
+  # ── 7. Security gate ─────────────────────────────────────────────────────
+  security-gate:
+    name: "7. Security gate"
+    needs: image-scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: report-*
+          merge-multiple: true
+          path: ${{ env.PROJECT }}/reports
+      - name: Enforce security/gate-policy.toml
+        run: |
+          ls -l reports/
+          python3 security/security_gate.py --reports reports --policy security/gate-policy.toml
+
+  # ── 8. Push ──────────────────────────────────────────────────────────────
+  push:
+    name: "8. Push images to GHCR"
+    needs: security-gate
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: image-*
+          merge-multiple: true
+          path: ${{ runner.temp }}
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push the exact images that passed the gate (tag = commit SHA)
+        working-directory: ${{ runner.temp }}
+        run: |
+          for c in backend frontend; do
+            docker load -i "$c.tar"
+            docker push "$REGISTRY/clinicdesk-$c:$GITHUB_SHA" | tail -1
+            echo "- \`$REGISTRY/clinicdesk-$c:$GITHUB_SHA\`" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+  # ── 9. Kubernetes deployment check ───────────────────────────────────────
+  deploy-check:
+    name: "9. Kubernetes deployment check (Helm on kind)"
+    needs: push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v5
+      - name: Create a throwaway kind cluster in the runner
+        uses: helm/kind-action@v1.15.1
+        with:
+          cluster_name: clinicdesk-ci
+      - name: Namespace with restricted Pod Security (pods must comply)
+        run: |
+          kubectl apply -f kubernetes/00-namespace.yaml
+          kubectl get ns clinicdesk --show-labels
+      - name: Server-side dry run of the raw manifests
+        run: kubectl apply -k kubernetes --dry-run=server
+      - name: helm upgrade --install (images from GHCR at this commit)
+        run: |
+          helm lint helm/clinicdesk
+          helm upgrade --install clinicdesk helm/clinicdesk -n clinicdesk \
+            --set backend.image.tag="$GITHUB_SHA" --set frontend.image.tag="$GITHUB_SHA" \
+            --set backend.autoscaling.enabled=false --set frontend.autoscaling.enabled=false \
+            --wait --timeout 6m
+          helm list -n clinicdesk
+          kubectl -n clinicdesk get deploy,sts,pods,svc,pvc -o wide
+      - name: Smoke test through the frontend (nginx -> /api -> backend -> PostgreSQL)
+        run: |
+          kubectl -n clinicdesk port-forward svc/clinicdesk-frontend 8080:80 >/tmp/pf.log 2>&1 &
+          for _ in $(seq 1 30); do curl -fs http://127.0.0.1:8080/healthz >/dev/null && break; sleep 1; done
+          set -x
+          curl -fsS http://127.0.0.1:8080/ | grep -o '<title>[^<]*</title>'
+          test "$(curl -fsS http://127.0.0.1:8080/api/doctors | jq length)" -eq 4
+          body='{"doctor_id":1,"scheduled_at":"2030-01-15T10:00","duration_minutes":30,"reason":"CI smoke test","patient":{"full_name":"CI Patient","phone":"+91 90000 00001"}}'
+          curl -fsS -X POST http://127.0.0.1:8080/api/appointments -H 'Content-Type: application/json' -d "$body" | jq -c '{id,status,scheduled_at,ends_at}'
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:8080/api/appointments -H 'Content-Type: application/json' -d "$body")
+          test "$code" = 409
+          curl -fsS 'http://127.0.0.1:8080/api/stats?on=2030-01-15' | jq -c '{total,scheduled}'
+          kubectl -n clinicdesk exec deploy/clinicdesk-backend -- python -c "import urllib.request as u; print(u.urlopen('http://127.0.0.1:8000/ready').read().decode())"
+          echo "SMOKE TEST PASSED" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Running image versions
+        run: |
+          kubectl -n clinicdesk get pods -o custom-columns='POD:.metadata.name,IMAGE:.spec.containers[0].image,READY:.status.containerStatuses[0].ready'
+      - name: Debug on failure
+        if: failure()
+        run: |
+          kubectl -n clinicdesk describe pods
+          kubectl -n clinicdesk get events --sort-by=.lastTimestamp
+          kubectl -n clinicdesk logs -l app.kubernetes.io/component=backend --tail=50 --prefix || true
+
+  # ── 10. GitOps promotion ─────────────────────────────────────────────────
+  gitops-promote:
+    name: "10. GitOps promote (bump gitops/values-eks.yaml)"
+    needs: deploy-check
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Set both image tags to this commit
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          yq -i '.backend.image.tag = strenv(SHA) | .frontend.image.tag = strenv(SHA)' gitops/values-eks.yaml
+          git diff -- gitops/values-eks.yaml
+      - name: Commit and push (retry on concurrent pushes)
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          if git diff --quiet -- gitops/values-eks.yaml; then echo "already at $SHA"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add gitops/values-eks.yaml
+          git commit -m "gitops(clinicdesk): promote ${SHA::7} to EKS [skip ci]" \
+                     -m "Images ghcr.io/saptak-cyber/clinicdesk-{backend,frontend}:$SHA passed the security gate and the kind deployment check."
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push origin HEAD:main && break
+            echo "push attempt $i failed, retrying"; sleep $((i * 5))
+          done
+          git log -1 --stat
+          echo "Promoted \`$SHA\` -> gitops/values-eks.yaml" >> "$GITHUB_STEP_SUMMARY"
