@@ -108,6 +108,31 @@ Where a command is Linux-only (`journalctl`, `adduser`, `useradd`, and `--networ
 reaching the laptop's own `localhost`), the README says so explicitly. `adduser`/`useradd` were
 run in `ubuntu:22.04` and `journalctl` on a systemd node, so those outputs are real as well.
 
+## Note on commit SHAs
+
+On 2026-10-07 the commit history was rewritten to edit commit messages only; every file is
+byte-for-byte unchanged. That gave the affected commits new SHAs. The READMEs, the GitHub
+Actions runs and the GHCR image tags (which are the commit SHA a pipeline ran on) still show
+the **original** SHAs. This table maps each original SHA cited in this repository to its
+current commit on `main`:
+
+| Original SHA (as cited) | Current commit | Commit |
+|---|---|---|
+| `709944b` | [`c27eced`](https://github.com/Saptak-cyber/DevOps_Assignments/commit/c27eced51476eb3b49969b403b9947e383157619) | Session 16: add CI/CD demo project and GitHub Actions workflow |
+| `82b3858` | [`0dd4be0`](https://github.com/Saptak-cyber/DevOps_Assignments/commit/0dd4be02dcd0c12f85ac481440695c6c7c2edf52) | Session 17: add DevSecOps demo project and pipeline |
+| `eca9956` | [`1a689c6`](https://github.com/Saptak-cyber/DevOps_Assignments/commit/1a689c6a7c7da43f7084896cad57ec045d9427a1) | Session 16: bump pytest to 9.1.1, skip pipeline on docs-only changes |
+| `1bbe4d1` | [`841e763`](https://github.com/Saptak-cyber/DevOps_Assignments/commit/841e7636323eb60662ce25a107148ad9c59d8638) | Session 17: skip the DevSecOps pipeline on docs-only changes |
+| `79c12eb` | [`b76feab`](https://github.com/Saptak-cyber/DevOps_Assignments/commit/b76feab303593a0479ce66eed971c7f1103f4f8a) | Session 16: skip reverse-DNS in HTTP server bind (35 s macOS test stall) |
+| `e664e8a` | [`8403600`](https://github.com/Saptak-cyber/DevOps_Assignments/commit/8403600dde7ab7a39e63b84ebcc24a544b477d10) | Final project README (Phase 1 evidence) and UI screenshots |
+| `1c0ef7b` | [`9a95e74`](https://github.com/Saptak-cyber/DevOps_Assignments/commit/9a95e74744658ae4bae56bb8879df202850423b9) | Helm/Argo CD: make the Postgres StatefulSet compare equal so the app reports Synced |
+| `b7d8743` | [`2f78678`](https://github.com/Saptak-cyber/DevOps_Assignments/commit/2f786783e2a895c2ea446898766cfcef25a56c28) | gitops(clinicdesk): promote 1c0ef7b to EKS [skip ci] |
+| `dbbdd49` | [`e8f9059`](https://github.com/Saptak-cyber/DevOps_Assignments/commit/e8f9059b0166755f1a62327b27eaba6f5d25c059) | ClinicDesk 1.1.0: show front-desk opening hours in the footer |
+| `2f649de` | [`ecf3097`](https://github.com/Saptak-cyber/DevOps_Assignments/commit/ecf3097122d3f9c1d5a84b2761fd65b1148daf12) | gitops(clinicdesk): promote dbbdd49 to EKS [skip ci] |
+| `7a58acc` | [`77a1ea0`](https://github.com/Saptak-cyber/DevOps_Assignments/commit/77a1ea060c6eb8eef9282e27e4e443c788859ffe) | Session 20: GitOps source manifests for the Argo CD mini project |
+| `25ac5d3` | [`facfa35`](https://github.com/Saptak-cyber/DevOps_Assignments/commit/facfa35866419dc7b78cb990b636ef1454267455) | Session 20 mini project: scale application to three replicas |
+| `b1bc8d3` | [`6ccd527`](https://github.com/Saptak-cyber/DevOps_Assignments/commit/6ccd527e27d34f8ae177eb78b99077b198ec4ea6) | Final project README: EKS deployment, CI/CD, DevSecOps, monitoring, GitOps demo and troubleshooting evidence |
+| `8d6553a` | [`bbcfc97`](https://github.com/Saptak-cyber/DevOps_Assignments/commit/bbcfc97f553f497ac2e220302d60ed3759eac732) | Security: allowlist a reviewed gitleaks false positive in README history |
+
 ## Running everything
 
 ```bash

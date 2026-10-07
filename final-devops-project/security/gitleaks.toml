@@ -29,9 +29,9 @@ paths = [
   '''package-lock\.json$''',
 ]
 
-# Reviewed false positive (curl-auth-user): README commit b1bc8d3 contains a captured command
+# Reviewed false positive (curl-auth-user): README commit 6ccd527 (originally b1bc8d3, before the 2026-10-07 history rewrite) contains a captured command
 # `curl -u admin:"$(cat <file>)"` that read an ephemeral Grafana password from a local file; no
 # credential value was ever written. The line was removed in the next commit; history can't be.
 [[allowlists]]
 description = "reviewed false positive in README history"
-commits = ["b1bc8d3ebb04fa9ff120554695ca2d4243349456"]
+commits = ["6ccd527e27d34f8ae177eb78b99077b198ec4ea6"]
