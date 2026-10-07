@@ -1,13 +1,8 @@
-# Screenshot capture checklist — Terraform & Infrastructure as Code
+# Screenshots — Terraform & Infrastructure as Code
 
-The READMEs reference these filenames. Capture each one from your terminal and save it here
-with the exact name, and the images in the READMEs will render on GitHub.
+The README references these filenames, and every one of them is in this folder.
 
-All AWS resources were destroyed after the run. To capture 01–08, re-run the workflow in
-`terraform-s3-demo/` (`init` → `fmt` → `validate` → `plan` → `apply` → `show` → `output` →
-`aws s3api …` → `destroy`) and screenshot each step. A new random suffix will appear in the bucket name.
-
-| File | What to capture | Referenced from |
+| File | What it shows | Referenced from |
 | --- | --- | --- |
 | `01-tf-init.png` | `terraform init` installing aws + random providers | terraform-s3-demo/README.md |
 | `02-tf-fmt-validate.png` | `terraform fmt -check`, `terraform fmt`, `terraform validate` → Success | terraform-s3-demo/README.md |

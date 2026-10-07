@@ -9,7 +9,7 @@ Files in this folder:
 |------|---------|
 | `link-demo.sh` | Runnable script that creates, inspects and deletes soft & hard links |
 | `README.md` | This document — theory, commands and captured output |
-| `screenshots/CAPTURE-LIST.md` | Screenshots to capture for the real `adduser` and `journalctl` runs |
+| `screenshots/CAPTURE-LIST.md` | Screenshot list for the real `adduser` and `journalctl` runs |
 
 ---
 

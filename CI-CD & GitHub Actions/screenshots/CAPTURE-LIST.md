@@ -1,9 +1,8 @@
-# Screenshot capture checklist — CI/CD & GitHub Actions
+# Screenshots — CI/CD & GitHub Actions
 
-The README references these filenames. Capture each one and save it here
-with the exact name, and the images in the README will render on GitHub.
+The README references these filenames, and every one of them is in this folder.
 
-| File | What to capture |
+| File | What it shows |
 | --- | --- |
 | `01-actions-run-graph.png` | Actions → run [37547563915](https://github.com/Saptak-cyber/DevOps_Assignments/actions/runs/37547563915): the workflow graph with all 9 jobs green (4 matrix legs → report / security / build → docker → deploy) |
 | `02-matrix-test-jobs.png` | Same run, left sidebar expanded on the `test` matrix plus the "Show runner details" step of the macOS leg (Runner OS: macOS ARM64) |

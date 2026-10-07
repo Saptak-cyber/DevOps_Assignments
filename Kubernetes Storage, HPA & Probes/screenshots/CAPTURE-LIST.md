@@ -1,9 +1,8 @@
-# Screenshot capture checklist — Kubernetes Storage, HPA & Probes
+# Screenshots — Kubernetes Storage, HPA & Probes
 
-The READMEs reference these filenames. Capture each one from your terminal and save it here
-with the exact name, and the images in the READMEs will render on GitHub.
+The README references these filenames, and every one of them is in this folder.
 
-| File | Referenced in | What to capture |
+| File | Referenced in | What it shows |
 | --- | --- | --- |
 | `01-emptydir.png` | `01-kubernetes-volumes/README.md` §1 | emptyDir: file survives `kill 1` (RESTARTS 1) but is gone after Pod delete/recreate |
 | `02-hostpath.png` | `01-kubernetes-volumes/README.md` §2 | hostPath: `minikube ssh -- cat /tmp/hostpath-data/host.txt` and the file surviving Pod deletion |

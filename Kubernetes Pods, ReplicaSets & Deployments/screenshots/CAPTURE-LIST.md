@@ -1,9 +1,8 @@
-# Screenshot capture checklist — Kubernetes Pods, ReplicaSets & Deployments
+# Screenshots — Kubernetes Pods, ReplicaSets & Deployments
 
-The README references these filenames. Capture each one from your terminal and save it here
-with the exact name, and the images in the README will render on GitHub.
+The README references these filenames, and every one of them is in this folder.
 
-| File | What to capture |
+| File | What it shows |
 | --- | --- |
 | `01-cluster-health.png` | Cluster Health |
 | `02-nginx-pod-operations.png` | Nginx Pod Operations |

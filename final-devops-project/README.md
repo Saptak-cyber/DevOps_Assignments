@@ -1347,6 +1347,8 @@ $ terraform show -json tfplan | python3 -c 'import sys,json; p=json.load(sys.std
 ['t3.medium'] ON_DEMAND AL2023_x86_64_STANDARD [{'desired_size': 2, 'max_size': 3, 'min_size': 1}]
 ```
 
+**Screenshot:** ![terraform init, fmt, validate and plan: 61 to add](./screenshots/11-terraform-plan.png)
+
 ### 8.2 apply
 
 `terraform apply -auto-approve` started at 00:00:36 UTC and finished about 14 minutes later. Key lines from the log (the EKS control plane alone took 9m22s):
@@ -1472,7 +1474,7 @@ kube-system   metrics-server-665685856d-rfwh8       1/1     Running   0         
 
 Two t3.medium nodes in different AZs, all six add-ons running, and the `ebs-csi-default-sc` StorageClass marked default. The `MAX_PODS 17` per node (the VPC CNI gives each pod a real VPC IP, and a t3.medium has 3 ENIs × 6 IPs) turned out to matter: see section 13.1.
 
-**Screenshot (to capture on a re-apply):** ![AWS console: VPC and EKS cluster](./screenshots/13-aws-console-eks.png)
+**Screenshot (from a re-apply on 2026-10-07):** ![AWS console: EKS cluster overview](./screenshots/13-aws-console-eks.png)
 
 ### 8.4 destroy
 
@@ -1501,6 +1503,8 @@ Destroy complete! Resources: 61 destroyed.
 `terraform destroy` started at 00:58:59 and finished at 01:11:07 UTC; most of that was draining and deleting the node group (8m21s). Total AWS lifetime of the stack: about 70 minutes (EKS control plane, two then three t3.medium nodes, one NAT gateway, one NLB, one 5 GiB gp3 volume).
 
 ---
+
+**Screenshot:** ![terraform destroy: 61 resources destroyed](./screenshots/20-terraform-destroy.png)
 
 ## 9. CI/CD pipeline
 
@@ -1759,6 +1763,8 @@ $ curl -s localhost:8000/metrics | grep -E '^http_request_duration_seconds_(coun
 http_request_duration_seconds_count{handler="/api/appointments",method="POST"} 14.0
 http_request_duration_seconds_sum{handler="/api/appointments",method="POST"} 0.13406608499963113
 ```
+
+**Screenshot:** ![Backend /metrics endpoint in Prometheus format](./screenshots/08-metrics-endpoint.png)
 
 ### 11.2 Prometheus and Grafana on EKS
 
@@ -2526,7 +2532,7 @@ Re-enabling automated sync found nothing to change: every manual fix had restore
 
 ## 14. Screenshots
 
-Real screenshots taken during the runs are in [`screenshots/`](./screenshots). The terminal ones still to take are listed in [`screenshots/CAPTURE-LIST.md`](./screenshots/CAPTURE-LIST.md); the ones that need the EKS cluster or the AWS console require a re-apply (the cluster has been destroyed).
+All screenshots are in [`screenshots/`](./screenshots); [`screenshots/CAPTURE-LIST.md`](./screenshots/CAPTURE-LIST.md) says how each was produced.
 
 | File | Shows | Status |
 | --- | --- | --- |
@@ -2539,8 +2545,9 @@ Real screenshots taken during the runs are in [`screenshots/`](./screenshots). T
 | `15-grafana-dashboard.png` | Grafana dashboard with live load-test data | captured |
 | `16-argocd-app.png` | Argo CD: Synced to `2f649de`, Healthy | captured |
 | `17-gitops-new-version-footer.png` | the 1.1.0 footer served from EKS | captured |
-| `01`, `02`, `07`–`11`, `18`, `19` | terminal / GitHub pages (pytest, compose, curl, metrics, trivy, helm, plan, pipeline, GHCR) | to capture |
-| `13-aws-console-eks.png` | AWS console VPC + EKS | needs a re-apply |
+| `01`, `02`, `07`, `08`, `10`, `11`, `20` | terminal (pytest, compose, curl, metrics, helm, plan, destroy) | rendered from the captured output above |
+| `09`, `18`, `19` | GitHub Actions gate log, pipeline graph, GHCR SHA tags | live browser capture |
+| `13-aws-console-eks.png` | AWS console: EKS cluster overview | live capture from a re-apply on 2026-10-07 |
 
 ---
 

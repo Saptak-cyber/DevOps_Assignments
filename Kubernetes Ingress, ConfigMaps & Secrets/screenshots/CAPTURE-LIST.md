@@ -1,9 +1,8 @@
-# Screenshot capture checklist — Kubernetes Ingress, ConfigMaps & Secrets
+# Screenshots — Kubernetes Ingress, ConfigMaps & Secrets
 
-The README references these filenames. Capture each one from your terminal and save it here
-with the exact name, and the images in the README will render on GitHub.
+The README references these filenames, and every one of them is in this folder.
 
-| File | What to capture |
+| File | What it shows |
 | --- | --- |
 | `01-configmap.png` | ConfigMap Creation |
 | `02-secret-decode.png` | Secret Decoding |

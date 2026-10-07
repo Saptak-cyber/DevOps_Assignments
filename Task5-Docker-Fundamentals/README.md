@@ -11,6 +11,11 @@ Task5-Docker-Fundamentals/
 ├── README.md
 ├── build-and-run-all.sh          # builds, runs and verifies all six in one go
 ├── screenshots/
+│   ├── nodejs-hello-world.png
+│   ├── python-hello-world.png
+│   ├── java-hello-world.png
+│   ├── apache-hello-world.png
+│   ├── nginx-hello-world.png
 │   └── react-hello-world.png
 ├── nodejs-app/
 │   ├── Dockerfile
@@ -124,6 +129,9 @@ $ curl http://localhost:3000
 
 **HTTP 200, 297 bytes, 0.0018 s.**
 
+
+![Node.js Hello World rendered in the browser](screenshots/nodejs-hello-world.png)
+
 ---
 
 ## 2. Python application
@@ -180,6 +188,9 @@ Flask's default is `127.0.0.1`, which inside a container means "only reachable f
 within the container". With the default, `docker run -p 5001:5000` starts fine and then
 `curl` returns `Empty reply from server` — the classic first Docker bug.
 
+
+![Python (Flask) Hello World rendered in the browser](screenshots/python-hello-world.png)
+
 ---
 
 ## 3. Java application
@@ -231,6 +242,9 @@ $ curl http://localhost:8081
 Note the image size: **555 MB**, by far the largest here, because the whole JDK (compiler
 included) ships in the final image. Task 6 fixes exactly this with a multi-stage build.
 
+
+![Java Hello World rendered in the browser](screenshots/java-hello-world.png)
+
 ---
 
 ## 4. Apache application
@@ -276,6 +290,9 @@ $ curl http://localhost:8082
 ```
 
 **HTTP 200, 330 bytes.**
+
+
+![Apache Hello World rendered in the browser](screenshots/apache-hello-world.png)
 
 ---
 
@@ -333,6 +350,9 @@ ok
 |---|---|---|
 | `httpd:alpine` | `/usr/local/apache2/htdocs/` | `/usr/local/apache2/conf/` |
 | `nginx:alpine` | `/usr/share/nginx/html/` | `/etc/nginx/conf.d/` |
+
+
+![Nginx Hello World rendered in the browser](screenshots/nginx-hello-world.png)
 
 ---
 

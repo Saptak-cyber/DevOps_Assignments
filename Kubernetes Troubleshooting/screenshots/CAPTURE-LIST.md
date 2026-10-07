@@ -1,9 +1,8 @@
-# Screenshot capture checklist — Kubernetes Troubleshooting
+# Screenshots — Kubernetes Troubleshooting
 
-The README references these filenames. Capture each one from your terminal and save it here
-with the exact name, and the images in the README will render on GitHub.
+The README references these filenames, and every one of them is in this folder.
 
-| File | What to capture |
+| File | What it shows |
 | --- | --- |
 | `01-commands.png` | Task 1: `kubectl get pods -o wide`, `kubectl describe pod describe-demo` (Events), `kubectl logs logs-demo`, `kubectl exec exec-demo -- curl localhost`, `kubectl events --for pod/events-demo`, `kubectl top pods` |
 | `02-crashloopbackoff.png` | `kubectl get pod crash-demo -w` cycling Error/CrashLoopBackOff, `kubectl logs crash-demo`, then `1/1 Running` after the fix |

@@ -196,6 +196,8 @@ database (172.20.0.2:3306) open
 `ping` only proves ICMP works. `nc -z` proves the **TCP port** is accepting connections —
 which is what actually matters for a database.
 
+**Screenshot:** ![Connectivity tests: same-network success, cross-network failure, DNS, MySQL port](./screenshots/01-connectivity-tests.png)
+
 ## 1.5 Inspect network membership
 
 ```console
@@ -214,6 +216,8 @@ database (172.20.0.2/16)
 The backend appears in **two** listings. `backend-net` is empty — created to satisfy the
 "3 networks" requirement, but nothing joined it, which is itself a useful demonstration
 that a network can exist with no members.
+
+**Screenshot:** ![Network membership: backend attached to two networks](./screenshots/02-network-membership.png)
 
 ## 1.6 Commands used
 
@@ -284,6 +288,8 @@ That error is itself the proof: a host-networked container has **no IP address o
 own**, so the field does not exist in the inspect output. A bridge container would show
 something like `172.17.0.2`.
 
+**Screenshot:** ![Apache on --network host: container and HTTP check](./screenshots/05-host-network-verify.png)
+
 ## 2.4 Proof it shares the host's network namespace
 
 ```console
@@ -325,6 +331,8 @@ Content-Type: text/html
 ```
 
 Apache is serving on port 80 of the host's network namespace.
+
+**Screenshot:** ![Proof the container shares the host network namespace](./screenshots/06-host-network-namespace.png)
 
 ## 2.5 The macOS/Windows caveat — and what it teaches
 
@@ -451,6 +459,8 @@ $ docker inspect nginx-bind --format '{{json .Mounts}}'
 `"Type":"bind"` confirms it is a bind mount, not a volume. `"RW":false` confirms `:ro`
 took effect.
 
+**Screenshot:** ![Browser: nginx serving the bind-mounted "Hello students" page](./screenshots/03-bind-mount-before.png)
+
 ## 3.4 Modify the file — no restart
 
 The file was rewritten **on the host** to:
@@ -504,6 +514,8 @@ was growing underneath it. The next request was complete and correct (`Content-L
 matching the host's `wc -c` of 336). This is a classic `sendfile` + bind-mount race, not a
 bind-mount failure. In development the standard fix is `sendfile off;` in the nginx config,
 which also disables `open_file_cache` staleness on network/VM-backed filesystems.
+
+**Screenshot:** ![Browser: the same container after editing index.html on the host, no restart](./screenshots/04-bind-mount-after-edit.png)
 
 ## 3.5 Read-only enforcement
 
@@ -750,6 +762,8 @@ A published service port goes through the `ingress` overlay. In a multi-node swa
 **8091 answers on every node — including nodes running no replica of `web`**. The ingress
 network forwards the request to a node that has one. This is the **routing mesh**, and it
 is why you can point a plain load balancer at all nodes without tracking placement.
+
+**Screenshot:** ![Overlay network on a real single-node swarm: services, VIP vs tasks DNS](./screenshots/07-overlay-swarm-demo.png)
 
 ## 4.4 The multi-host walkthrough
 

@@ -1,9 +1,8 @@
-# Screenshot capture checklist — Complete CI/CD & DevSecOps
+# Screenshots — Complete CI/CD & DevSecOps
 
-The README references these filenames. Capture each one and save it here
-with the exact name, and the images in the README will render on GitHub.
+The README references these filenames, and every one of them is in this folder.
 
-| File | What to capture |
+| File | What it shows |
 | --- | --- |
 | `01-pipeline-graph-green.png` | Actions → run [37547817960](https://github.com/Saptak-cyber/DevOps_Assignments/actions/runs/37547817960): the workflow graph with all 11 stages green, left to right in the Expected-Flow order |
 | `02-sast.png` | Same run, job "4. SAST (Bandit + Semgrep)": Bandit "Run metrics" (High 0 / Medium 0 / Low 5) and Semgrep "Findings: 0" |

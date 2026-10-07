@@ -41,7 +41,7 @@ Everything documented here was actually executed. Highlights:
 * **Task 4** — the full git history, branch, cherry-pick and resulting commit graph are
   from a real repository.
 * **Task 5** — all six images built; all six containers ran and returned HTTP 200 with
-  the Hello World content. React verified with a browser screenshot.
+  the Hello World content, and each page is shown rendered in a browser screenshot.
 * **Task 6** — multi-stage image built (286 MB) and compared against the single-stage
   equivalent (555 MB); the absence of `javac` and of the source in the final image was
   verified by inspecting both images. All three deployment apps built, ran and answered

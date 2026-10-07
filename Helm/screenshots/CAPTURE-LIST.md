@@ -1,9 +1,8 @@
-# Screenshot capture checklist — Helm
+# Screenshots — Helm
 
-The README references these filenames. Capture each one from your terminal and save it here
-with the exact name, and the images in the README will render on GitHub.
+The README references these filenames, and every one of them is in this folder.
 
-| File | What to capture |
+| File | What it shows |
 | --- | --- |
 | `01-helm-commands.png` | Task 1: `helm install demo ./my-chart`, `helm list`, `helm status demo`, `helm history demo` after the upgrades and `helm rollback demo 1` |
 | `02-helm-repo-search.png` | Task 1: `helm repo add bitnami ...`, `helm repo list`, `helm search repo bitnami/nginx`, `helm search hub nginx` |

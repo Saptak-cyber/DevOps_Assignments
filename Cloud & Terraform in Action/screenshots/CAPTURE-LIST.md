@@ -1,13 +1,8 @@
-# Screenshot capture checklist — Cloud & Terraform in Action
+# Screenshots — Cloud & Terraform in Action
 
-The README references these filenames. Capture each one and save it here with the exact name,
-and the images in the README will render on GitHub.
+The README references these filenames, and every one of them is in this folder.
 
-The stack was destroyed right after verification to avoid charges. To capture these, re-run
-`terraform apply`, take the screenshots (IDs, IP and bucket suffix will differ from the README),
-then run `terraform destroy` straight away. The whole cycle takes about 3 minutes.
-
-| File | What to capture |
+| File | What it shows |
 | --- | --- |
 | `01-vpc-resource-map.png` | AWS console → VPC → `sst-s19-cloud-tf-vpc` → **Resource map** tab (subnet, route table, IGW) |
 | `02-tf-init-validate.png` | `terraform init`, `terraform fmt -recursive`, `terraform validate` → Success |

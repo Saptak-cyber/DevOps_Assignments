@@ -1,9 +1,8 @@
-# Screenshot capture checklist — Linux Fundamentals
+# Screenshots — Linux Fundamentals
 
-The README references these filenames. Capture each one from your terminal and save it here
-with the exact name, and the images in the README will render on GitHub.
+The README references these filenames, and every one of them is in this folder.
 
-| File | What to capture |
+| File | What it shows |
 | --- | --- |
 | `01-adduser-real-run.png` | Sub-task 2.4 real run: `adduser devopsuser` in `ubuntu:22.04`, then `id`, `grep /etc/passwd`, `ls -la /home/devopsuser`, and the `useradd testraw` contrast |
 | `01-journalctl-real-run.png` | Sub-task 3.3 real run: `journalctl -u demo-app`, and `systemctl status broken-app` + `journalctl -xeu broken-app` showing the failure reason |
