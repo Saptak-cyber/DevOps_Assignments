@@ -15,3 +15,7 @@ with the exact name, and the images in the README will render on GitHub.
 | `07-basics-scale-update.png` | Task 7 Modules 5–6: scale to 4 + curl spread across Pods, `set image` v2, the v10 `ImagePullBackOff`, `rollout undo` |
 
 Every command needed is in the README, in the task that references the screenshot.
+
+## How these screenshots were produced
+
+Terminal screenshots are renderings of the real command output already captured in the README (same commands, same output; very long outputs are trimmed with a marked `[… lines trimmed …]` line).

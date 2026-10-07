@@ -14,3 +14,7 @@ with the exact name, and the images in the README will render on GitHub.
 | `07-notes-rollback.png` | Mini project: `helm rollback notes-dev 2`, `helm history notes-dev`, three Running pods |
 
 Every command needed is in the README, in the section that references the screenshot.
+
+## How these screenshots were produced
+
+Terminal screenshots are renderings of the real command output already captured in the README (same commands, same output; very long outputs are trimmed with a marked `[… lines trimmed …]` line).

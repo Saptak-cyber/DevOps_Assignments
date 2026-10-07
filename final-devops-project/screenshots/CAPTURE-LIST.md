@@ -29,3 +29,7 @@ The EKS cluster was destroyed after the run to stop AWS charges, so the rows mar
 | `18-ci-pipeline-green.png` | GitHub Actions run 37552961415: all 10 jobs green (graph view) | 9 | to capture |
 | `19-ghcr-sha-tags.png` | GHCR package page for `clinicdesk-backend` showing the commit-SHA tags | 9 | to capture |
 | `20-terraform-destroy.png` | `Destroy complete! Resources: 61 destroyed.` and the empty AWS CLI checks | 8.4 / Cleanup | to capture from the README output, or on the next destroy |
+
+## How these screenshots were produced
+
+Terminal screenshots are renderings of the real command output already captured in the README (same commands, same output; very long outputs are trimmed with a marked `[… lines trimmed …]` line). GitHub Actions and GHCR screenshots are live browser captures of the actual runs and packages (Playwright, signed in as Saptak-cyber). Browser screenshots of Grafana, Prometheus, Argo CD and the app were taken live while the clusters were running.

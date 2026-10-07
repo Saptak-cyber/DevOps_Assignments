@@ -20,3 +20,7 @@ with the exact name, and the images in the READMEs will render on GitHub.
 | `13-mini-bonus-probes.png` | `README.md` Task 3 | bonus: `0/1 Running` with empty endpoints (readiness) and `CrashLoopBackOff` restarts (liveness) |
 
 Every command needed is in the README that references the screenshot.
+
+## How these screenshots were produced
+
+Terminal screenshots are renderings of the real command output already captured in the README (same commands, same output; very long outputs are trimmed with a marked `[… lines trimmed …]` line).

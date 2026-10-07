@@ -20,3 +20,9 @@ then run `terraform destroy` straight away. The whole cycle takes about 3 minute
 | `09-tf-destroy.png` | `terraform destroy` → `Destroy complete! Resources: 16 destroyed.` + empty `describe-vpcs` / 404 `head-bucket` |
 
 Every command needed is in the README, in the section that references the screenshot.
+
+## How these screenshots were produced
+
+Terminal screenshots are renderings of the real command output already captured in the README (same commands, same output; very long outputs are trimmed with a marked `[… lines trimmed …]` line).
+
+`05-nginx-page.png` shows the `curl` of the nginx page from the README rather than a browser window, because the EC2 instance had already been destroyed.

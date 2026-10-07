@@ -22,3 +22,7 @@ that references each file and save the screenshot here with the exact name, and 
 
 The kind cluster was deleted after the run. To recapture the terminal shots, recreate it with Step 1/1.1, reinstall with the
 values file and the manifests in `monitoring/` and `gitops/`, and re-run the commands.
+
+## How these screenshots were produced
+
+Terminal screenshots are renderings of the real command output already captured in the README (same commands, same output; very long outputs are trimmed with a marked `[… lines trimmed …]` line). Browser screenshots of Grafana, Prometheus, Argo CD and the app were taken live while the clusters were running.

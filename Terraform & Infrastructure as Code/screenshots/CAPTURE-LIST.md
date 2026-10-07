@@ -24,3 +24,7 @@ All AWS resources were destroyed after the run. To capture 01–08, re-run the w
 | `13-rds-cli.png` | `aws rds describe-db-engine-versions --engine postgres --default-only` and `describe-orderable-db-instance-options` | aws-services/05-dynamodb-rds/README.md |
 
 Every command needed is in the README that references the screenshot.
+
+## How these screenshots were produced
+
+Terminal screenshots are renderings of the real command output already captured in the README (same commands, same output; very long outputs are trimmed with a marked `[… lines trimmed …]` line).
