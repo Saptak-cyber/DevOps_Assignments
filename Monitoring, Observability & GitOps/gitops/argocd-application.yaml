@@ -1,0 +1,28 @@
+# Apply this file from your local/admin environment; do not put it under the Git source path.
+# It lives in gitops/, one level ABOVE the watched path gitops/app/, so Argo CD never
+# renders the Application object as one of its own workload manifests.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: session20-mini
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/Saptak-cyber/DevOps_Assignments.git
+    targetRevision: main
+    # The folder name contains spaces, a comma and '&'. It is a plain YAML string here
+    # (quoted), and Argo CD's repo-server treats it as a filesystem path inside the clone.
+    path: "Monitoring, Observability & GitOps/gitops/app"
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: session20
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
