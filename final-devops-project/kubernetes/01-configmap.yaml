@@ -1,0 +1,18 @@
+# Non-secret settings. Credentials live in the clinicdesk-db Secret (see 02-secret.example.yaml).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clinicdesk-config
+  namespace: clinicdesk
+  labels:
+    app.kubernetes.io/part-of: clinicdesk
+data:
+  ENVIRONMENT: kubernetes
+  LOG_LEVEL: INFO
+  CLINIC_TIMEZONE: Asia/Kolkata
+  DB_HOST: clinicdesk-postgres
+  DB_PORT: "5432"
+  DB_NAME: clinicdesk
+  # nginx in the frontend pods proxies /api to this Service (used when the UI is
+  # reached without the Ingress, e.g. kubectl port-forward svc/clinicdesk-frontend).
+  BACKEND_UPSTREAM: clinicdesk-backend:8000

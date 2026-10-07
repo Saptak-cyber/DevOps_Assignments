@@ -1,0 +1,17 @@
+# kubectl apply -k kubernetes/   (after creating the clinicdesk-db Secret; see 02-secret.example.yaml)
+# Pin images to a CI-built commit:  kustomize edit set image ghcr.io/saptak-cyber/clinicdesk-backend:<sha>
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - 00-namespace.yaml
+  - 01-configmap.yaml
+  - 10-postgres.yaml
+  - 20-backend.yaml
+  - 30-frontend.yaml
+  - 40-ingress.yaml
+  - 50-hpa.yaml
+images:
+  - name: ghcr.io/saptak-cyber/clinicdesk-backend
+    newTag: latest
+  - name: ghcr.io/saptak-cyber/clinicdesk-frontend
+    newTag: latest

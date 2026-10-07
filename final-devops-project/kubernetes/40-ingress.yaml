@@ -1,0 +1,28 @@
+# Requires an Ingress controller (ingress-nginx). Locally: add "<minikube ip> clinicdesk.local" to /etc/hosts.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: clinicdesk
+  namespace: clinicdesk
+  labels:
+    app.kubernetes.io/name: clinicdesk
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 1m
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: clinicdesk.local
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: clinicdesk-backend
+                port: {name: http}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: clinicdesk-frontend
+                port: {name: http}
