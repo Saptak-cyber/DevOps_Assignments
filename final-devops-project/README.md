@@ -1530,6 +1530,7 @@ Deployment to EKS is deliberately **not** a `kubectl`/`helm` step with cluster c
 | [37550442829](https://github.com/Saptak-cyber/DevOps_Assignments/actions/runs/37550442829) | `e664e8a` first push of the project | success, promoted `e664e8a` | 4m22s |
 | [37552034444](https://github.com/Saptak-cyber/DevOps_Assignments/actions/runs/37552034444) | `1c0ef7b` Argo CD sync fix | success, promoted `1c0ef7b` | 4m55s |
 | [37552961415](https://github.com/Saptak-cyber/DevOps_Assignments/actions/runs/37552961415) | `dbbdd49` ClinicDesk 1.1.0 (GitOps demo) | success, promoted `dbbdd49` | ~4m25s |
+| [37556012156](https://github.com/Saptak-cyber/DevOps_Assignments/actions/runs/37556012156) | `8d6553a` gitleaks allowlist (after the cluster was destroyed) | success, promoted `8d6553a` (no cluster was listening) | |
 
 Job timings of the demo run (start → end, UTC):
 
