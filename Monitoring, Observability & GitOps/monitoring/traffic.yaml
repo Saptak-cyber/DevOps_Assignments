@@ -1,0 +1,27 @@
+# Sends ~2 requests/second to the metrics app (plus an occasional 404 on /err)
+# so http_requests_total has something to rate().
+apiVersion: v1
+kind: Pod
+metadata:
+  name: traffic
+  labels:
+    app: traffic
+spec:
+  containers:
+    - name: wget
+      image: busybox:1.36
+      command:
+        - /bin/sh
+        - -c
+        - |
+          i=0
+          while true; do
+            wget -q -O /dev/null http://session20-metrics-app:8080/ || true
+            i=$((i+1))
+            if [ $((i % 10)) -eq 0 ]; then wget -q -O /dev/null http://session20-metrics-app:8080/err 2>/dev/null || true; fi
+            sleep 0.5
+          done
+      resources:
+        limits:
+          cpu: 50m
+          memory: 16Mi

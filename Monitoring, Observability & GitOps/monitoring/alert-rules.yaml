@@ -1,0 +1,49 @@
+# Custom alerts for the Session 20 demo workloads in the default namespace.
+# Prometheus picks this up because ruleSelectorNilUsesHelmValues=false.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: session20-alerts
+  labels:
+    app: session20
+spec:
+  groups:
+    - name: session20.rules
+      rules:
+        - alert: Session20AppDown
+          expr: up{job="session20-metrics-app"} == 0
+          for: 30s
+          labels:
+            severity: critical
+          annotations:
+            summary: "session20-metrics-app target {{ $labels.instance }} is down"
+            description: "Prometheus could not scrape {{ $labels.instance }} for 30s."
+
+        - alert: Session20PodRestarting
+          expr: increase(kube_pod_container_status_restarts_total{namespace="default"}[5m]) > 0
+          for: 15s
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{ $labels.pod }} is restarting"
+            description: "Container {{ $labels.container }} restarted {{ $value | printf \"%.0f\" }} time(s) in the last 5 minutes."
+
+        - alert: Session20HighPodCPU
+          expr: sum by (namespace, pod) (rate(container_cpu_usage_seconds_total{namespace="default", container!=""}[1m])) > 0.2
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{ $labels.pod }} is using a lot of CPU"
+            description: "{{ $labels.pod }} has used {{ $value | printf \"%.2f\" }} CPU cores for over 1 minute (threshold 0.2)."
+
+        - alert: Session20HighPodMemory
+          expr: |
+            max by (namespace, pod, container) (container_memory_working_set_bytes{namespace="default", container!=""})
+              / max by (namespace, pod, container) (kube_pod_container_resource_limits{namespace="default", resource="memory"}) > 0.8
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Container {{ $labels.pod }}/{{ $labels.container }} is near its memory limit"
+            description: "Working set is {{ $value | humanizePercentage }} of the memory limit."

@@ -1,0 +1,20 @@
+# dd allocates a 54 MiB buffer, fills it from /dev/zero and then blocks writing
+# into a pipe nobody reads, so the memory stays resident (limit 64Mi) ->
+# trips Session20HighPodMemory (> 80% of limit).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: memory-hog
+  labels:
+    app: memory-hog
+spec:
+  containers:
+    - name: hog
+      image: busybox:1.36
+      command: ["/bin/sh", "-c", "echo holding 54MiB; dd if=/dev/zero bs=54M count=1 | sleep 3600"]
+      resources:
+        requests:
+          memory: 32Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi

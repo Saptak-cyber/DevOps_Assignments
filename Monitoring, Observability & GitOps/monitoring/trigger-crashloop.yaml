@@ -1,0 +1,25 @@
+# Starts, logs an error and exits 1 -> CrashLoopBackOff -> trips Session20PodRestarting.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crashy
+  labels:
+    app: crashy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: crashy
+  template:
+    metadata:
+      labels:
+        app: crashy
+    spec:
+      containers:
+        - name: app
+          image: busybox:1.36
+          command: ["/bin/sh", "-c", "echo 'crashy starting'; sleep 5; echo 'FATAL: cannot connect to database at db:5432'; exit 1"]
+          resources:
+            limits:
+              cpu: 50m
+              memory: 16Mi

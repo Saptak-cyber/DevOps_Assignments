@@ -1,0 +1,24 @@
+# Traces demo: Jaeger v2 (all-in-one, in-memory) + HotROD, a 4-service demo app
+# (frontend -> customer -> MySQL, driver -> Redis, route) instrumented with
+# OpenTelemetry and exporting spans over OTLP/HTTP to Jaeger.
+#   docker compose up -d
+#   curl "http://localhost:18080/dispatch?customer=123"
+#   Jaeger UI:  http://localhost:26686
+# Host ports are shifted (26686, 18080) to avoid clashing with other local port-forwards.
+services:
+  jaeger:
+    image: jaegertracing/jaeger:2.22.0
+    container_name: session20-jaeger
+    ports:
+      - "26686:16686"   # Jaeger UI + query API
+      - "4318:4318"     # OTLP/HTTP receiver
+  hotrod:
+    image: jaegertracing/example-hotrod:2.22.0
+    container_name: session20-hotrod
+    command: ["all", "--jaeger-ui", "http://localhost:26686"]
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+    ports:
+      - "18080:8080"    # HotROD frontend
+    depends_on:
+      - jaeger
