@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     app_name: str = "ClinicDesk API"
-    app_version: str = "1.0.0"
+    app_version: str = "1.1.0"
     environment: str = "local"
     clinic_timezone: str = "Asia/Kolkata"
     log_level: str = "INFO"
