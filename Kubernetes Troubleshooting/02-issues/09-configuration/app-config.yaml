@@ -1,0 +1,8 @@
+# The configuration the app expects, kept outside the image.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  DATABASE_URL: "postgres://postgres-db.production.svc.cluster.local:5432/notes"
+  LOG_LEVEL: "info"

@@ -1,0 +1,16 @@
+# Section 8 of the brief: the Service selector intentionally changed to app: wrong-app
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: troubleshooting-service
+
+spec:
+  selector:
+    app: wrong-app
+
+  ports:
+    - port: 80
+      targetPort: 80
+
+  type: ClusterIP

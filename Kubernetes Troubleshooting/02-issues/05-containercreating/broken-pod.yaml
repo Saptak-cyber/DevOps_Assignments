@@ -1,0 +1,25 @@
+# Stuck in ContainerCreating: the Pod mounts a ConfigMap and a Secret as
+# volumes, but neither object exists yet. The scheduler places the Pod
+# (volumes are not a scheduling constraint), then the kubelet cannot build
+# the volumes, so the container is never created.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: volume-demo
+spec:
+  containers:
+    - name: app
+      image: nginx:1.27
+      volumeMounts:
+        - name: site-config
+          mountPath: /etc/nginx/conf.d
+        - name: tls
+          mountPath: /etc/tls
+          readOnly: true
+  volumes:
+    - name: site-config
+      configMap:
+        name: site-config          # does not exist
+    - name: tls
+      secret:
+        secretName: site-tls       # does not exist

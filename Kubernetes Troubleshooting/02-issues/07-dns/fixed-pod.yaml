@@ -1,0 +1,20 @@
+# Fixed scenario-4 pod: the hostname now matches the real Service
+# (<service>.<namespace>.svc.cluster.local) and curl reports failures.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fail-4-dns-failure-pod
+  labels:
+    tier: triage-gauntlet
+    scenario: dns-failure
+spec:
+  containers:
+    - name: client
+      image: curlimages/curl:8.6.0
+      command: ["sh", "-c"]
+      args:
+        - |
+          echo "Attempting connection to internal database...";
+          curl -sS --connect-timeout 3 -o /dev/null -w "connected, HTTP %{http_code}\n" http://postgres-db.production.svc.cluster.local:5432 || echo "connection FAILED";
+          echo "Process sleeping...";
+          sleep 3600

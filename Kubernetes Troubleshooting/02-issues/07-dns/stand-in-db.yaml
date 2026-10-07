@@ -1,0 +1,41 @@
+# Stand-in for the "internal database" the class scenario-4 pod is trying to
+# reach: a Service named postgres-db in namespace production, port 5432.
+# (An nginx backend is used instead of a real PostgreSQL so that a plain curl
+# can prove name resolution AND connectivity end to end.)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: production
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-db
+  namespace: production
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-db
+  template:
+    metadata:
+      labels:
+        app: postgres-db
+    spec:
+      containers:
+        - name: db-stand-in
+          image: nginx:1.27
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-db
+  namespace: production
+spec:
+  selector:
+    app: postgres-db
+  ports:
+    - port: 5432
+      targetPort: 80

@@ -1,0 +1,20 @@
+# Fixed version of the class scenario-3 pod: requests sized to what the app
+# actually needs (and what a node can offer), with limits as a ceiling.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fail-3-pending-pod
+  labels:
+    tier: triage-gauntlet
+    scenario: pending
+spec:
+  containers:
+    - name: hungry-app
+      image: nginx:alpine
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "64Mi"
+        limits:
+          cpu: "250m"
+          memory: "128Mi"

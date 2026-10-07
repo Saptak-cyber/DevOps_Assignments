@@ -1,0 +1,20 @@
+# The fix: create the objects the Pod references. The Pod itself is unchanged;
+# the kubelet retries the mount and the container starts on its own.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: site-config
+data:
+  default.conf: |
+    server {
+      listen 80;
+      location / { return 200 "config mounted from ConfigMap\n"; }
+    }
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: site-tls
+type: Opaque
+stringData:
+  note.txt: "placeholder - not a real certificate"

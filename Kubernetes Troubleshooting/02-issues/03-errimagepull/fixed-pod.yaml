@@ -1,0 +1,17 @@
+# Fixed version of the class scenario-2 pod.
+# `yatri-api-service` is not a public Docker Hub repository, so the reference
+# resolves to docker.io/library/yatri-api-service and the registry refuses it.
+# Fix = a fully-qualified, existing image:tag. nginx:1.27 stands in for the
+# real API image (which would normally live in a private registry and need
+# an imagePullSecret).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fail-2-imagepull-pod
+  labels:
+    tier: triage-gauntlet
+    scenario: imagepull
+spec:
+  containers:
+    - name: web-app
+      image: docker.io/library/nginx:1.27

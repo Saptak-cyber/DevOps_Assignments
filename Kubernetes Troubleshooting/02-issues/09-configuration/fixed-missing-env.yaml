@@ -1,0 +1,32 @@
+# Fixed class scenario-1 pod: DATABASE_URL is injected from the app-config
+# ConfigMap. The script is a one-shot start-up check that exits 0 on success,
+# so restartPolicy is OnFailure (with the default Always, a clean exit 0 is
+# itself restarted forever and ends up in CrashLoopBackOff too).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fail-1-crashloop-pod
+  labels:
+    tier: triage-gauntlet
+    scenario: crashloop
+spec:
+  restartPolicy: OnFailure
+  containers:
+    - name: python-app
+      image: python:3.11-alpine
+      env:
+        - name: DATABASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: DATABASE_URL
+      command:
+        - "python3"
+        - "-c"
+        - |
+          import os, sys
+          db_url = os.environ.get("DATABASE_URL")
+          if not db_url:
+              print("[FATAL ERROR]: DATABASE_URL environment variable is MISSING!", file=sys.stderr)
+              sys.exit(1)
+          print("Application started successfully!")

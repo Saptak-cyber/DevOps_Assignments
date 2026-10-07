@@ -1,0 +1,12 @@
+# Throw-away HTTP client for testing Services from inside the cluster.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: client
+  labels:
+    role: client
+spec:
+  containers:
+    - name: curl
+      image: curlimages/curl:8.6.0
+      command: ["sleep", "3600"]
