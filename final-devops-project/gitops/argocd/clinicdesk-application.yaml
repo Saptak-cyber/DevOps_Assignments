@@ -1,0 +1,42 @@
+# Argo CD Application for ClinicDesk on EKS. Applied once by hand (kubectl apply -f) after
+# Argo CD is installed; it lives outside the synced path so Argo CD never manages itself.
+#
+# Source of truth: this public repo, branch main. Argo CD renders the Helm chart with
+# values-prod.yaml + gitops/values-eks.yaml (whose image tags CI bumps) and keeps the
+# cluster equal to Git: automated sync, prune deleted objects, self-heal manual drift.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: clinicdesk
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io     # deleting the Application deletes its resources
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Saptak-cyber/DevOps_Assignments.git
+    targetRevision: main
+    path: final-devops-project/helm/clinicdesk
+    helm:
+      releaseName: clinicdesk
+      valueFiles:
+        - values-prod.yaml
+        - ../../gitops/values-eks.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: clinicdesk
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false        # the namespace (restricted Pod Security) is created up front
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff: {duration: 10s, factor: 2, maxDuration: 3m}
+  # Replica counts are owned by the HPAs, not by Git.
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers: [/spec/replicas]

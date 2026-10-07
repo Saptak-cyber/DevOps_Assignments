@@ -1,0 +1,26 @@
+# Argo CD (argo/argo-cd Helm chart) trimmed for a 2-node t3.medium cluster:
+# no Dex (local admin only), no notifications, no ApplicationSet controller.
+#   helm upgrade --install argocd argo/argo-cd -n argocd --create-namespace -f gitops/argocd/argocd-values.yaml
+dex:
+  enabled: false
+notifications:
+  enabled: false
+applicationSet:
+  replicas: 0
+configs:
+  params:
+    server.insecure: true          # reached only through kubectl port-forward
+  cm:
+    timeout.reconciliation: 60s    # poll Git every minute (no webhook from GitHub to a private cluster)
+controller:
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+server:
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+repoServer:
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+redis:
+  resources:
+    requests: {cpu: 25m, memory: 32Mi}

@@ -1,0 +1,54 @@
+# kube-prometheus-stack (prometheus-community/kube-prometheus-stack) for the EKS cluster.
+#   helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+#     -n monitoring --create-namespace -f monitoring/kube-prometheus-stack-values.yaml \
+#     --set grafana.adminPassword="$(openssl rand -base64 18)"
+# The release name matters: the ClinicDesk ServiceMonitor/PrometheusRule carry release=kube-prometheus-stack.
+
+# EKS runs the control plane; these components cannot be scraped from inside the cluster.
+kubeControllerManager: {enabled: false}
+kubeScheduler: {enabled: false}
+kubeEtcd: {enabled: false}
+kubeProxy: {enabled: false}
+
+# Alert *rules* are evaluated by Prometheus (visible on /alerts); no Alertmanager pod,
+# to save pod slots on two t3.medium nodes (17 pods each with the VPC CNI).
+alertmanager:
+  enabled: false
+
+prometheus:
+  prometheusSpec:
+    # Pick up ServiceMonitors/PrometheusRules from every namespace, not only this release's.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorNamespaceSelector: {}
+    ruleSelectorNilUsesHelmValues: false
+    ruleNamespaceSelector: {}
+    retention: 24h
+    scrapeInterval: 15s
+    resources:
+      requests: {cpu: 200m, memory: 512Mi}
+      limits: {memory: 1Gi}
+    # emptyDir storage: metrics are disposable in this short-lived cluster and no extra EBS volume is left behind.
+
+grafana:
+  adminPassword: ""            # always supplied with --set at install time, never committed
+  persistence:
+    enabled: false
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard   # ConfigMaps with this label are loaded as dashboards
+      searchNamespace: ALL
+
+prometheusOperator:
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+
+kube-state-metrics:
+  resources:
+    requests: {cpu: 20m, memory: 64Mi}
+
+prometheus-node-exporter:
+  resources:
+    requests: {cpu: 20m, memory: 32Mi}
