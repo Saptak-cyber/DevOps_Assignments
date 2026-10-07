@@ -1,0 +1,16 @@
+# Same claim as static-pvc.yaml, with ONE change: storageClassName: "".
+# Without it, minikube's DefaultStorageClass admission plugin stamps
+# storageClassName: standard on the claim, the hostpath provisioner creates a
+# brand-new volume, and the hand-made student-pv is never used.
+# An explicit empty string means "no class -> bind only to a pre-created PV".
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: student-pvc
+spec:
+  storageClassName: ""
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 500Mi

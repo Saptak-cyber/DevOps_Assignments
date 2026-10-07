@@ -1,0 +1,22 @@
+TIME      NAME          REFERENCE            TARGETS       MINPODS   MAXPODS   REPLICAS   AGE   PODS(Running/total)
+05:18:32  web-app-hpa   Deployment/web-app   cpu: 1%/50%   2     5     2     15m   2/2
+05:18:47  web-app-hpa   Deployment/web-app   cpu: 1%/30%   2     5     2     15m   2/2
+05:19:03  web-app-hpa   Deployment/web-app   cpu: 1%/30%   2     5     2     15m   2/2
+05:19:18  web-app-hpa   Deployment/web-app   cpu: 9%/30%   2     5     2     15m   2/2
+05:19:33  web-app-hpa   Deployment/web-app   cpu: 9%/30%   2     5     2     16m   2/2
+05:19:48  web-app-hpa   Deployment/web-app   cpu: 9%/30%   2     5     2     16m   2/2
+05:20:04  web-app-hpa   Deployment/web-app   cpu: 9%/30%   2     5     2     16m   2/2
+05:20:19  web-app-hpa   Deployment/web-app   cpu: 42%/30%   2     5     2     16m   3/3
+05:20:34  web-app-hpa   Deployment/web-app   cpu: 42%/30%   2     5     3     17m   3/3
+05:20:49  web-app-hpa   Deployment/web-app   cpu: 42%/30%   2     5     3     17m   3/3
+05:21:05  web-app-hpa   Deployment/web-app   cpu: 42%/30%   2     5     3     17m   3/3
+05:21:20  web-app-hpa   Deployment/web-app   cpu: 35%/30%   2     5     3     17m   3/3
+05:21:35  web-app-hpa   Deployment/web-app   cpu: 35%/30%   2     5     3     18m   3/3
+05:21:50  web-app-hpa   Deployment/web-app   cpu: 35%/30%   2     5     3     18m   3/3
+05:22:06  web-app-hpa   Deployment/web-app   cpu: 35%/30%   2     5     3     18m   3/3
+05:22:21  web-app-hpa   Deployment/web-app   cpu: 28%/30%   2     5     3     19m   3/3
+05:22:36  web-app-hpa   Deployment/web-app   cpu: 28%/30%   2     5     3     19m   3/3
+05:22:51  web-app-hpa   Deployment/web-app   cpu: 28%/30%   2     5     3     19m   3/3
+05:23:07  web-app-hpa   Deployment/web-app   cpu: 28%/30%   2     5     3     19m   3/3
+05:23:22  web-app-hpa   Deployment/web-app   cpu: 29%/30%   2     5     3     20m   3/3
+05:23:37  web-app-hpa   Deployment/web-app   cpu: 29%/30%   2     5     3     20m   3/3

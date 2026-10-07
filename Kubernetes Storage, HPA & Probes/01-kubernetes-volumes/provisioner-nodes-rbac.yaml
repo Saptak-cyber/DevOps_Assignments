@@ -1,0 +1,25 @@
+# Workaround found during this lab: minikube's storage-provisioner service
+# account cannot `get nodes`, which it needs to honour
+# volumeBindingMode: WaitForFirstConsumer (it reads the node named in the
+# volume.kubernetes.io/selected-node annotation). Grant read access to nodes.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: storage-provisioner-read-nodes
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: storage-provisioner-read-nodes
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: storage-provisioner-read-nodes
+subjects:
+  - kind: ServiceAccount
+    name: storage-provisioner
+    namespace: kube-system
