@@ -26,7 +26,7 @@ runnable code where applicable.
 | 17 | [Terraform & Infrastructure as Code](Terraform%20&%20Infrastructure%20as%20Code/) | Session 18: S3 bucket on real AWS (init → destroy), research READMEs for IAM, EC2, S3, VPC, DynamoDB & RDS | `terraform-s3-demo/`, `aws-services/` |
 | 18 | [Cloud & Terraform in Action](Cloud%20&%20Terraform%20in%20Action/) | Session 19: VPC + subnet + IGW + SG + EC2 (nginx) + S3 on real AWS, dependencies, state, plan/apply/destroy | Terraform project |
 | 19 | [Monitoring, Observability & GitOps](Monitoring,%20Observability%20&%20GitOps/) | Session 20: kube-prometheus-stack metrics/alerts/Grafana, Jaeger trace demo, Argo CD GitOps mini project (Git change → sync, self-heal) | monitoring values, alert rules, `gitops/` |
-| 20 | [final-devops-project](final-devops-project/) | Session 21: ClinicDesk (FastAPI + React + PostgreSQL) through CI, DevSecOps, GHCR, Terraform-provisioned EKS, Helm, Ingress, HPA, Prometheus/Grafana, Argo CD GitOps, troubleshooting challenge | full project, [`final-devops-project.yml`](.github/workflows/final-devops-project.yml) |
+| 20 | [final-devops-project](final-devops-project/) | Session 21: ClinicDesk (FastAPI + React + PostgreSQL) through CI, DevSecOps, GHCR, Terraform-provisioned EKS, Helm, Ingress, HPA, Prometheus/Grafana, Argo CD GitOps, troubleshooting challenge | full project, [`final-devops-project.yml`](.github/workflows/final-devops-project.yml), slides and video in [`demo/`](final-devops-project/demo/) |
 
 ## Verification status
 

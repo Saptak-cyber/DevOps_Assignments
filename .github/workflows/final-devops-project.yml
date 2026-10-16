@@ -22,6 +22,7 @@ on:
       - "final-devops-project/**"
       - "!final-devops-project/**/*.md"
       - "!final-devops-project/screenshots/**"
+      - "!final-devops-project/demo/**"              # slides and the walkthrough video
       - "!final-devops-project/gitops/**"          # promotion commits and Argo CD config only
       - ".github/workflows/final-devops-project.yml"
   pull_request:

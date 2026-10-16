@@ -9,6 +9,8 @@
 
 **Pipeline runs (all green):** [first run, e664e8a](https://github.com/Saptak-cyber/DevOps_Assignments/actions/runs/37550442829) · [sync fix, 1c0ef7b](https://github.com/Saptak-cyber/DevOps_Assignments/actions/runs/37552034444) · [live GitOps demo, dbbdd49](https://github.com/Saptak-cyber/DevOps_Assignments/actions/runs/37552961415)
 
+**Slides and walkthrough video:** [`demo/`](./demo) (deck as `.pptx` and `.pdf`, recording runbook)
+
 ---
 
 ## Table of Contents
@@ -30,7 +32,25 @@
 | 13 | [Troubleshooting](#13-troubleshooting) | seven issues on the live cluster: identify, investigate, root cause, fix, verify |
 | 14 | [Screenshots](#14-screenshots) | |
 | 15 | [Lessons learned](#15-lessons-learned) | |
+| 16 | [Known issues and limitations](#16-known-issues-and-limitations) | what this setup deliberately does not do |
+| 17 | [Presentation and demo](#17-presentation-and-demo) | slide deck, walkthrough video, recording runbook |
 | | [Cleanup](#cleanup) | teardown order and proof that AWS is empty |
+
+### Where the graded items live
+
+The layout differs slightly from the TaskBoard reference, so here is where each item in GRADING.md is:
+
+| GRADING.md expects | In this project |
+| --- | --- |
+| `backend/app/`, `backend/alembic/versions/`, `backend/requirements.txt`, `backend/tests/`, `backend/pytest.ini` | [`application/backend/`](./application/backend) (same names inside) |
+| `frontend/` | [`application/frontend/`](./application/frontend) |
+| `docker-compose.yml` | [`docker/docker-compose.yml`](./docker/docker-compose.yml) |
+| `.github/workflows/` | [repo root](../.github/workflows/final-devops-project.yml) (copy in [`.github/workflows/`](./.github/workflows)) |
+| `terraform/`, `terraform.tfvars.example` | [`terraform/`](./terraform) |
+| `k8s/namespace.yaml` | [`kubernetes/00-namespace.yaml`](./kubernetes/00-namespace.yaml) |
+| `helm/` | [`helm/clinicdesk/`](./helm/clinicdesk) |
+| `monitoring/` | [`monitoring/`](./monitoring) |
+| `demo/` (video + slides) | [`demo/`](./demo) |
 
 ---
 
@@ -2548,6 +2568,7 @@ All screenshots are in [`screenshots/`](./screenshots); the table below says how
 | `01`, `02`, `07`, `08`, `10`, `11`, `20` | terminal (pytest, compose, curl, metrics, helm, plan, destroy) | rendered from the captured output above |
 | `09`, `18`, `19` | GitHub Actions gate log, pipeline graph, GHCR SHA tags | live browser capture |
 | `13-aws-console-eks.png` | AWS console: EKS cluster overview | live capture from a re-apply on 2026-10-07 |
+| `21-commit-history.png` | GitHub commit history of `final-devops-project/` (M3: descriptive messages, 10+ commits) | live browser capture, 2026-10-16 |
 
 ---
 
@@ -2562,6 +2583,35 @@ All screenshots are in [`screenshots/`](./screenshots); the table below says how
 7. **An HPA without requests silently does nothing, but limits alone are not "no requests".** Kubernetes copies limits into requests, which keeps the HPA working against the wrong baseline. Set both explicitly.
 8. **Scanners pay for themselves on day one.** Bandit found string-built SQL in a migration, Trivy found a writable root filesystem and three EKS-module settings worth documenting. Accepted risks get a reason and an expiry date, not a silent ignore.
 9. **Pull-based delivery removes a secret.** GitHub never held a kubeconfig or AWS key; the pipeline's only cluster-facing action was a Git commit.
+
+---
+
+## 16. Known issues and limitations
+
+These are deliberate trade-offs for a short-lived classroom cluster, not oversights. Each says what production would do instead.
+
+- **The EKS environment is temporary.** The cluster is created for a demo and destroyed afterwards, so the load-balancer hostnames in this README no longer resolve. Rebuilding it takes about 25 minutes ([`demo/README.md`](./demo/README.md)).
+- **One NAT gateway.** Both private subnets route through a single NAT gateway in one availability zone. If that zone fails, the nodes lose outbound access. Production would run one NAT gateway per zone.
+- **PostgreSQL runs in the cluster as a single replica**, with no backups and no failover. The PVC survives pod restarts but not `terraform destroy`. Production would use Amazon RDS (Multi-AZ, automated backups) and keep only the app in Kubernetes.
+- **The EKS API endpoint is public.** `endpoint_public_access_cidrs` defaults to `0.0.0.0/0` so `kubectl` works from a laptop. This is recorded as an accepted Trivy risk (AWS-0040/0041) in [`security/trivyignore.yaml`](./security/trivyignore.yaml); narrow it to your own IP in `terraform.tfvars`.
+- **No TLS and no login.** The Ingress serves plain HTTP on the NLB hostname (`ingress.tls` is empty), and the API has no authentication, because it is a front-desk tool on a trusted network. Production would add cert-manager with a real domain and put the app behind SSO.
+- **Terraform state is local.** The S3 backend with native locking is written out but commented in [`terraform/versions.tf`](./terraform/versions.tf), so only one person can run Terraform safely.
+- **Metrics are short-lived and alerts go nowhere.** Prometheus keeps 24 h on an `emptyDir` volume, and Alertmanager is disabled to save pod slots: the three alert rules are evaluated and visible, but not delivered.
+- **Small nodes cap the pod count.** With the VPC CNI a t3.medium holds 17 pods, so the backend HPA tops out at 5 replicas on EKS and the node group at 3 nodes ([13.1](#131-pods-pending-too-many-pods)).
+- **Argo CD polls rather than receiving webhooks.** A promoted commit reaches the cluster within about 60 s instead of seconds, because GitHub cannot call into the cluster.
+- **The Grafana error-ratio panel shows "No data" when there are no errors**, as in the screenshot: the panel's numerator selects only 4xx/5xx series, which do not exist until the first error, so there is nothing to plot. Wrapping it in `or vector(0)` would draw a flat zero line instead.
+
+---
+
+## 17. Presentation and demo
+
+Everything for M10 is in [`demo/`](./demo):
+
+| File | Contents |
+| --- | --- |
+| [`clinicdesk-presentation.pptx`](./demo/clinicdesk-presentation.pptx) / [`.pdf`](./demo/clinicdesk-presentation.pdf) | 14 slides: overview, tech stack, architecture diagram, app and tests, containers, CI/CD flow, DevSecOps, Terraform, Kubernetes and Helm, GitOps, observability, key learnings |
+| `clinicdesk-walkthrough.mp4` | slides, then a live walkthrough: codebase → push and pipeline → Terraform plan and AWS console → Argo CD sync → `kubectl get pods/svc/ingress` → Prometheus targets UP → Grafana |
+| [`README.md`](./demo/README.md) | the recording runbook: rebuild, the order of the walkthrough with exact commands, teardown |
 
 ---
 
