@@ -62,7 +62,7 @@ BASE_URL=http://$LB application/scripts/seed-demo.sh "$(TZ=Asia/Kolkata date +%F
 UIs for the recording (one terminal tab each):
 
 ```bash
-kubectl -n argocd port-forward svc/argocd-server 8080:443                         # https://localhost:8080
+kubectl -n argocd port-forward svc/argocd-server 8080:443                         # http://localhost:8080 (server.insecure)
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d; echo
 kubectl -n monitoring port-forward svc/kube-prometheus-stack-prometheus 9090:9090  # http://localhost:9090/targets
 kubectl -n monitoring port-forward svc/kube-prometheus-stack-grafana 3001:80       # http://localhost:3001 (admin / $GF_PASS)
@@ -97,7 +97,7 @@ Play clip T1 (the `terraform plan` recorded before apply). Then show the AWS con
 
 ### 5. Argo CD
 
-At `https://localhost:8080`: the `clinicdesk` application is Synced and Healthy. Within about a minute of the promote commit from step 3, the revision changes and the Deployments roll to the new SHA:
+At `http://localhost:8080`: the `clinicdesk` application is Synced and Healthy. Within about a minute of the promote commit from step 3, the revision changes and the Deployments roll to the new SHA:
 
 ```bash
 kubectl -n argocd get application clinicdesk -o wide
