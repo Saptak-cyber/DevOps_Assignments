@@ -4,7 +4,7 @@
 | --- | --- |
 | [`clinicdesk-presentation.pptx`](./clinicdesk-presentation.pptx) | 14-slide deck: overview, tech stack, architecture diagram, app and tests, containers, CI/CD flow, DevSecOps, Terraform, Kubernetes and Helm, GitOps, observability, key learnings. Speaker notes on every slide. |
 | [`clinicdesk-presentation.pdf`](./clinicdesk-presentation.pdf) | The same deck as a PDF |
-| `clinicdesk-walkthrough.mp4` | Recorded presentation and live walkthrough (see below) |
+| [`clinicdesk-walkthrough.mp4`](./clinicdesk-walkthrough.mp4) | Recorded presentation and live walkthrough (23 min, 1080p): slides, codebase, a live push of ClinicDesk 1.2.0 through the pipeline, Terraform plan and AWS console, Argo CD rolling it out, Kubernetes, Prometheus and Grafana |
 
 The video follows the order in `SUBMISSION.md`: slides first, then a live walkthrough of the codebase, CI/CD, Terraform, Argo CD, Kubernetes, Prometheus and Grafana.
 

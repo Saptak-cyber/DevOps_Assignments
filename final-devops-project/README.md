@@ -1555,6 +1555,8 @@ Deployment to EKS is deliberately **not** a `kubectl`/`helm` step with cluster c
 | [37552034444](https://github.com/Saptak-cyber/DevOps_Assignments/actions/runs/37552034444) | `1c0ef7b` Argo CD sync fix | success, promoted `1c0ef7b` | 4m55s |
 | [37552961415](https://github.com/Saptak-cyber/DevOps_Assignments/actions/runs/37552961415) | `dbbdd49` ClinicDesk 1.1.0 (GitOps demo) | success, promoted `dbbdd49` | ~4m25s |
 | [37556012156](https://github.com/Saptak-cyber/DevOps_Assignments/actions/runs/37556012156) | `8d6553a` gitleaks allowlist (after the cluster was destroyed) | success, promoted `8d6553a` (no cluster was listening) | |
+| [38933871896](https://github.com/Saptak-cyber/DevOps_Assignments/actions/runs/38933871896) | `bbd1f8f` slide deck and demo runbook | success, promoted `bbd1f8f` (rebuilt EKS for the recording) | 5m00s |
+| [39474931309](https://github.com/Saptak-cyber/DevOps_Assignments/actions/runs/39474931309) | `6a7f7b8` ClinicDesk 1.2.0, the live change in the walkthrough video | success, promoted `6a7f7b8`, rolled out by Argo CD on camera | 4m55s |
 
 Job timings of the demo run (start → end, UTC):
 
@@ -2569,6 +2571,7 @@ All screenshots are in [`screenshots/`](./screenshots); the table below says how
 | `09`, `18`, `19` | GitHub Actions gate log, pipeline graph, GHCR SHA tags | live browser capture |
 | `13-aws-console-eks.png` | AWS console: EKS cluster overview | live capture from a re-apply on 2026-10-07 |
 | `21-commit-history.png` | GitHub commit history of `final-devops-project/` (M3: descriptive messages, 10+ commits) | live browser capture, 2026-10-16 |
+| `22-kubectl-get-pods.png`, `23-kubectl-get-svc.png`, `24-helm-list.png` | EKS after the recorded demo: all pods Running (backend at 5 replicas after the load test), ClusterIP Services + Ingress + HPAs, Helm releases and Argo CD Synced/Healthy at `8167351` | rendered from output captured on the live cluster, 2026-10-21 |
 
 ---
 
@@ -2610,7 +2613,7 @@ Everything for M10 is in [`demo/`](./demo):
 | File | Contents |
 | --- | --- |
 | [`clinicdesk-presentation.pptx`](./demo/clinicdesk-presentation.pptx) / [`.pdf`](./demo/clinicdesk-presentation.pdf) | 14 slides: overview, tech stack, architecture diagram, app and tests, containers, CI/CD flow, DevSecOps, Terraform, Kubernetes and Helm, GitOps, observability, key learnings |
-| `clinicdesk-walkthrough.mp4` | slides, then a live walkthrough: codebase → push and pipeline → Terraform plan and AWS console → Argo CD sync → `kubectl get pods/svc/ingress` → Prometheus targets UP → Grafana |
+| [`clinicdesk-walkthrough.mp4`](./demo/clinicdesk-walkthrough.mp4) | slides, then a live walkthrough: codebase → push and pipeline → Terraform plan and AWS console → Argo CD sync → `kubectl get pods/svc/ingress` → Prometheus targets UP → Grafana |
 | [`README.md`](./demo/README.md) | the recording runbook: rebuild, the order of the walkthrough with exact commands, teardown |
 
 ---
