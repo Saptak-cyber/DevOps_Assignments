@@ -191,7 +191,7 @@ export default function App() {
       </main>
 
       <footer className="footnote">
-        Front desk open 08:00 to 20:00, Monday to Saturday.{' '}
+        Front desk open 20:00 to 21:00, Monday to Saturday.{' '}
         Stats for {stats?.active_doctors ?? 0} doctors and {stats?.patients ?? 0} registered patients.{' '}
         {stats ? `${stats.upcoming_7_days} visits booked over the next 7 days.` : ''}
       </footer>
